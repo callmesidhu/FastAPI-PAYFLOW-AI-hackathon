@@ -15,6 +15,7 @@ interface InvoiceDetail {
   internal_id: string;
   invoice_number: string;
   customer_id: string;
+  customer_name?: string | null;
   total: string;
   currency: string;
   due_date: string;
@@ -359,8 +360,12 @@ export const DashboardView: FC = () => {
             ) : (
               <DataTable<InvoiceDetail>
                 columns={[
-                  { key: 'invoice_number', header: 'Reference', width: '180px' },
-                  { key: 'customer_id', header: 'Customer ID' },
+                  { key: 'invoice_number', header: 'Reference', width: '160px' },
+                  {
+                    key: 'customer',
+                    header: 'Customer',
+                    render: (it) => it.customer_name || it.customer_id,
+                  },
                   {
                     key: 'total',
                     header: 'Amount',
@@ -371,17 +376,17 @@ export const DashboardView: FC = () => {
                       </span>
                     ),
                   },
-                  { key: 'due_date', header: 'Due Date', width: '140px' },
+                  { key: 'due_date', header: 'Due Date', width: '130px' },
                   {
                     key: 'status',
                     header: 'Status',
-                    width: '180px',
+                    width: '160px',
                     render: (it) => <StatusLabel status={it.status} size="sm" />,
                   },
                 ]}
                 data={data.attention_needed}
                 keyExtractor={(it) => it.internal_id}
-                onRowClick={(it) => navigate(`/invoices?id=${it.internal_id}`)}
+                onRowClick={(it) => navigate(`/invoices/${it.internal_id}`)}
               />
             )}
           </div>
@@ -416,7 +421,12 @@ export const DashboardView: FC = () => {
               ) : (
                 <DataTable<InvoiceDetail>
                   columns={[
-                    { key: 'invoice_number', header: 'Invoice', width: '140px' },
+                    { key: 'invoice_number', header: 'Invoice', width: '130px' },
+                    {
+                      key: 'customer',
+                      header: 'Customer',
+                      render: (it) => it.customer_name || '—',
+                    },
                     {
                       key: 'total',
                       header: 'Amount',
@@ -430,13 +440,13 @@ export const DashboardView: FC = () => {
                     {
                       key: 'status',
                       header: 'Status',
-                      width: '140px',
+                      width: '130px',
                       render: (it) => <StatusLabel status={it.status} size="sm" />,
                     },
                   ]}
                   data={data.recent_invoices}
                   keyExtractor={(it) => it.internal_id}
-                  onRowClick={(it) => navigate(`/invoices?id=${it.internal_id}`)}
+                  onRowClick={(it) => navigate(`/invoices/${it.internal_id}`)}
                 />
               )}
             </div>
@@ -465,10 +475,30 @@ export const DashboardView: FC = () => {
                   style={{
                     backgroundColor: 'var(--color-cream)',
                     border: 'var(--border-hairline)',
-                    padding: '24px',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '20px',
                   }}
                 >
-                  Trend data available.
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: 'var(--border-hairline)', textAlign: 'left' }}>
+                        <th style={{ padding: '8px 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.675rem', color: 'var(--color-muted)' }}>Month</th>
+                        <th style={{ padding: '8px 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.675rem', color: 'var(--color-muted)' }}>Currency</th>
+                        <th style={{ padding: '8px 4px', textAlign: 'right', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.675rem', color: 'var(--color-muted)' }}>Settled Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.collections_trend.map((trend, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid rgba(58, 52, 44, 0.1)' }}>
+                          <td style={{ padding: '8px 4px', fontFamily: 'var(--font-mono)' }}>{trend.period}</td>
+                          <td style={{ padding: '8px 4px' }}>{trend.currency}</td>
+                          <td style={{ padding: '8px 4px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-paid)' }}>
+                            ${trend.amount}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
