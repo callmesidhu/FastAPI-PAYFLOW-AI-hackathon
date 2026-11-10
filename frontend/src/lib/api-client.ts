@@ -64,6 +64,8 @@ export const setOnUnauthorizedCallback = (callback: () => void) => {
   onUnauthorizedCallback = callback;
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '') : '';
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -80,7 +82,10 @@ export async function apiClient<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(endpoint, {
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${normalizedEndpoint}`;
+
+  const response = await fetch(url, {
     ...options,
     headers,
   });
