@@ -1,0 +1,138 @@
+/* ==============================================================================
+   PAYFLOW AI — Editorial Quiet Luxury Design System Tokens
+   Tokens: Background #FAF7F2; Sand #D9CFBA; Cream #EDE6D6; Ink #0B0B0B;
+   Muted #4A4036; Hairline #3A342C; Paid #7A7F5A; Pending #B5835A; Overdue #8C4A3F
+   Geometry: Strict max 2px border radius. NO pills, NO glassmorphism, NO bright gradients.
+   ============================================================================== */
+
+:root {
+  /* Canvas & Structural Color Tokens */
+  --color-bg: #FAF7F2;         /* Main canvas background */
+  --color-sand: #D9CFBA;       /* Primary surface, bands & sidebar */
+  --color-cream: #EDE6D6;      /* Secondary surface, table bodies & cards */
+  --color-ink: #0B0B0B;        /* Primary high-contrast ink, buttons & hero cards */
+  --color-muted: #4A4036;      /* Body copy, labels & secondary text */
+  --color-hairline: #3A342C;   /* 1px borders, rules & row dividers */
+  --color-white: #FFFFFF;      /* Clean surface for editable inputs & highlights */
+
+  /* Muted Status Palette */
+  --color-paid: #7A7F5A;       /* Muted olive */
+  --color-paid-bg: rgba(122, 127, 90, 0.15);
+  --color-pending: #B5835A;    /* Muted clay */
+  --color-pending-bg: rgba(181, 131, 90, 0.15);
+  --color-overdue: #8C4A3F;    /* Muted brick */
+  --color-overdue-bg: rgba(140, 74, 63, 0.15);
+  --color-draft: #4A4036;
+  --color-draft-bg: rgba(74, 64, 54, 0.15);
+
+  /* Typography */
+  --font-serif: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, Menlo, monospace;
+
+  /* Typographic Letter Spacing */
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.08em;
+  --tracking-wider: 0.14em;
+  --tracking-widest: 0.22em;
+
+  /* Strict Square Geometry (Max 2px radius; forbidden: pills, circular badges) */
+  --radius-none: 0px;
+  --radius-sm: 2px;
+  --radius-max: 2px;
+
+  /* Borders & Dividers */
+  --border-hairline: 1px solid var(--color-hairline);
+  --border-subtle: 1px solid rgba(58, 52, 44, 0.25);
+  --border-focus: 2px solid var(--color-ink);
+
+  /* Shadows (Strictly none or subtle, never heavy blur) */
+  --shadow-none: none;
+  --shadow-subtle: 0 1px 2px rgba(11, 11, 11, 0.04);
+
+  /* Spacing Scale */
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+/* Global Reset & Base Invariants */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings: Uppercase Elegant Serif with Letter Spacing */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1.2;
+}
+
+p, span, li, td, th {
+  color: var(--color-ink);
+}
+
+/* Interactive Elements & Accessible Focus Rings */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+/* Restrained wave line-art container */
+.decorative-wave {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.15;
+  stroke: var(--color-hairline);
+  fill: none;
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
