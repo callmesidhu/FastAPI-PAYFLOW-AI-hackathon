@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.api.deps import get_current_user
+from app.core.rate_limit import rate_limit_auth_dependency
 from app.core.security import create_access_token
 from app.db.mongodb import get_db
 from app.models.user import User
@@ -12,7 +13,12 @@ from app.services.auth_service import authenticate_user, register_user
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/register", response_model=AuthTokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=AuthTokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_auth_dependency)],
+)
 async def register(
     payload: UserRegister,
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -27,7 +33,11 @@ async def register(
     )
 
 
-@router.post("/login", response_model=AuthTokenResponse)
+@router.post(
+    "/login",
+    response_model=AuthTokenResponse,
+    dependencies=[Depends(rate_limit_auth_dependency)],
+)
 async def login(
     payload: UserLogin,
     db: AsyncIOMotorDatabase = Depends(get_db),
