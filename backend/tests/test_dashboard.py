@@ -158,3 +158,69 @@ async def test_fresh_user_receives_clean_zero_state(mock_db: MockDatabase, user_
             assert data["by_currency"][0]["outstanding"] == "0.00"
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_dashboard_collections_trend_with_history(mock_db: MockDatabase, user_a: User):
+    """Verify that 3+ months of paid invoices triggers has_trend_data and aggregates correctly."""
+    await mock_db.users.insert_one(user_a.model_dump())
+
+    # Create 3 paid invoices across 3 different months
+    inv_jan = Invoice(
+        user_id=user_a.id,
+        customer_id="cust-1",
+        invoice_number="INV-2026-0010",
+        items=[InvoiceItem(name="Sprint 1", unit_price=Decimal("1000.00"))],
+        currency=SupportedCurrency.USD,
+        issue_date=date(2026, 1, 1),
+        due_date=date(2026, 1, 31),
+        status=InvoiceStatus.PAID,
+        paid_at=datetime(2026, 1, 28, 12, 0, 0, tzinfo=timezone.utc),
+    )
+    inv_feb = Invoice(
+        user_id=user_a.id,
+        customer_id="cust-1",
+        invoice_number="INV-2026-0020",
+        items=[InvoiceItem(name="Sprint 2", unit_price=Decimal("1500.00"))],
+        currency=SupportedCurrency.USD,
+        issue_date=date(2026, 2, 1),
+        due_date=date(2026, 2, 28),
+        status=InvoiceStatus.PAID,
+        paid_at=datetime(2026, 2, 25, 12, 0, 0, tzinfo=timezone.utc),
+    )
+    inv_mar = Invoice(
+        user_id=user_a.id,
+        customer_id="cust-1",
+        invoice_number="INV-2026-0030",
+        items=[InvoiceItem(name="Sprint 3", unit_price=Decimal("2000.00"))],
+        currency=SupportedCurrency.USD,
+        issue_date=date(2026, 3, 1),
+        due_date=date(2026, 3, 31),
+        status=InvoiceStatus.PAID,
+        paid_at=datetime(2026, 3, 20, 12, 0, 0, tzinfo=timezone.utc),
+    )
+
+    await mock_db.invoices.insert_one(inv_jan.model_dump())
+    await mock_db.invoices.insert_one(inv_feb.model_dump())
+    await mock_db.invoices.insert_one(inv_mar.model_dump())
+
+    token_a = create_access_token(subject=user_a.id)
+
+    app.dependency_overrides[get_db] = lambda: mock_db
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            headers = {"Authorization": f"Bearer {token_a}"}
+            res = await client.get("/api/dashboard/summary", headers=headers)
+            assert res.status_code == 200
+            data = res.json()
+
+            assert data["has_trend_data"] is True
+            assert len(data["collections_trend"]) == 3
+            periods = [t["period"] for t in data["collections_trend"]]
+            assert periods == ["2026-01", "2026-02", "2026-03"]
+            amounts = [t["amount"] for t in data["collections_trend"]]
+            assert amounts == ["1000.00", "1500.00", "2000.00"]
+    finally:
+        app.dependency_overrides.clear()
+

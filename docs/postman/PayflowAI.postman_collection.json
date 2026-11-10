@@ -1,0 +1,1563 @@
+{
+  "info": {
+    "_postman_id": "payflow-ai-master-collection-v1",
+    "name": "PAYFLOW AI - Official REST API Collection",
+    "description": "Authoritative Postman API Collection for PAYFLOW AI \u2014 an AI-powered accounts receivable assistant for freelancers and small businesses.\n\nFeatures:\n- Authentication (Argon2id + JWT)\n- Customer CRUD with deduplication\n- Invoice drafting with server-authoritative Decimal math\n- Human Approval Center with cryptographic snapshot binding\n- PayPal Developer Sandbox Invoicing v2 adapter\n- AI Assistant with structured tool calling & natural language invoice extraction\n- Aging receivables analytics and multi-currency metrics\n- Automated reminder policy engine & Zapier notification webhooks\n- PayPal Webhook cryptographic signature verification\n- Append-only-style audit trail and financial ledger\n\nSecurity Invariant: Credentials and tokens are managed via collection variables. No secrets are embedded in this collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "approvalId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reminderId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Health & Diagnostics",
+      "description": "System health and PayPal Developer Sandbox diagnostic probes.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Liveness and readiness check. Returns status, environment name, and masked service indicators. Secrets are never exposed.",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.status).to.eql('healthy');",
+                  "    pm.expect(data.paypal_mode).to.eql('sandbox');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PayPal Sandbox Diagnostics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Inspects PayPal Developer Sandbox connectivity, OAuth token validity, and webhook configuration. Secrets remain masked.",
+            "url": {
+              "raw": "{{baseUrl}}/api/paypal/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "paypal",
+                "status"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('PayPal Sandbox is connected', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.mode).to.eql('sandbox');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Authentication",
+      "description": "User registration and login using Argon2id password hashing and short-lived JWT tokens.",
+      "item": [
+        {
+          "name": "Register New Merchant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Create a new merchant tenant. Automatically stores the returned access token in {{accessToken}}.",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sarah.designer@example.com\",\n  \"password\": \"SecurePassword123!\",\n  \"name\": \"Sarah Designer\",\n  \"business_name\": \"Studio Sarah Design LLC\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', data.access_token);",
+                  "    pm.test('Registration succeeded & accessToken set', function() {",
+                  "        pm.expect(data.access_token).to.be.a('string');",
+                  "        pm.expect(data.user.email).to.eql('sarah.designer@example.com');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Existing Merchant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Authenticate with email and password. Updates {{accessToken}} collection variable.",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sarah.designer@example.com\",\n  \"password\": \"SecurePassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', data.access_token);",
+                  "    pm.test('Login succeeded & token set', function() {",
+                  "        pm.expect(data.access_token).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Retrieve authenticated merchant profile.",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns profile of authenticated merchant', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.email).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Customer Management",
+      "description": "Customer entity management with duplicate prevention, search, and deletion invariants.",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Add a client recipient. Saves customer ID to {{customerId}} variable.",
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Global Ventures\",\n  \"email\": \"accounting@acmeglobal.example\",\n  \"company\": \"Acme Corp\",\n  \"notes\": \"Net 14 payment terms agreed upon.\",\n  \"billing_address\": {\n    \"address_line_1\": \"100 Innovation Way\",\n    \"admin_area_2\": \"San Francisco\",\n    \"admin_area_1\": \"CA\",\n    \"postal_code\": \"94105\",\n    \"country_code\": \"US\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set('customerId', data.id);",
+                  "    pm.test('Customer created and ID captured', function() {",
+                  "        pm.expect(data.id).to.be.a('string');",
+                  "        pm.expect(data.email).to.eql('accounting@acmeglobal.example');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Customers (Search & Pagination)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Retrieve paginated list of customers owned by the authenticated merchant.",
+            "url": {
+              "raw": "{{baseUrl}}/api/customers?q=Acme&page=1&page_size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers?q=Acme&page=1&page_size=20"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns paginated customer list', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Customer By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Fetch specific customer details.",
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns customer record', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.id).to.eql(pm.collectionVariables.get('customerId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Customer Details",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Partially update customer information.",
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Updated terms: Net 7 terms for fast PayPal Sandbox settlement.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Customer updated', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete / Archive Customer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Deletes customer or archives if linked to invoices.",
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Invoices (Drafts & Calculations)",
+      "description": "Invoice draft creation, server-authoritative Decimal calculations, and lifecycle transitions.",
+      "item": [
+        {
+          "name": "Create Draft Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Create invoice draft. Totals computed server-side via Decimal. Saves invoice internal_id to {{invoiceId}}.",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invoices"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"currency\": \"USD\",\n  \"issue_date\": \"2026-11-10\",\n  \"due_date\": \"2026-11-24\",\n  \"notes\": \"Thank you for partnering with Studio Sarah Design LLC.\",\n  \"items\": [\n    {\n      \"name\": \"Brand Identity Redesign\",\n      \"description\": \"Comprehensive design sprint including typography, tokens, and style guide\",\n      \"quantity\": \"1\",\n      \"unit_price\": \"2400.00\",\n      \"tax\": \"0.00\"\n    },\n    {\n      \"name\": \"Design System Documentation\",\n      \"description\": \"Figma component library and token specifications\",\n      \"quantity\": \"10\",\n      \"unit_price\": \"80.00\",\n      \"tax\": \"0.00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set('invoiceId', data.internal_id);",
+                  "    pm.test('Invoice draft created with authoritative calculations', function() {",
+                  "        pm.expect(data.internal_id).to.be.a('string');",
+                  "        pm.expect(data.total).to.eql('3200.00');",
+                  "        pm.expect(data.status).to.eql('draft');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Invoices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Retrieve invoices owned by authenticated merchant with optional filters.",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices?page=1&page_size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invoices?page=1&page_size=20"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Invoice Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Retrieve complete invoice detail including line items and calculation breakdown.",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices/{{invoiceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "{{invoiceId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invoice details returned', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.internal_id).to.eql(pm.collectionVariables.get('invoiceId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Invoice for Human Approval",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Transitions draft to PENDING_APPROVAL and generates an immutable Approval record with cryptographic payload_hash. Captures {{approvalId}}.",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices/{{invoiceId}}/submit-for-approval",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "{{invoiceId}}",
+                "submit-for-approval"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set('approvalId', data.approval_id);",
+                  "    pm.test('Submitted for approval with payload hash', function() {",
+                  "        pm.expect(data.approval_id).to.be.a('string');",
+                  "        pm.expect(data.payload_hash).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Invoice Activity Timeline",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Retrieve chronological append-only audit trail and lifecycle events for this invoice.",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices/{{invoiceId}}/timeline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "{{invoiceId}}",
+                "timeline"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns chronological activity timeline', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.events).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Human Approval Center",
+      "description": "Human-in-the-loop governance: lists pending approvals and records merchant decisions.",
+      "item": [
+        {
+          "name": "List Pending Approvals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Inspect all pending actions requiring business owner verification.",
+            "url": {
+              "raw": "{{baseUrl}}/api/approvals?status=pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "approvals?status=pending"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Approval Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Inspect approval record, immutable snapshot, and bound payload hash.",
+            "url": {
+              "raw": "{{baseUrl}}/api/approvals/{{approvalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "approvals",
+                "{{approvalId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Action",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Merchant grants authorization for the action. Verifies payload integrity.",
+            "url": {
+              "raw": "{{baseUrl}}/api/approvals/{{approvalId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "approvals",
+                "{{approvalId}}",
+                "approve"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Action approved', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.status).to.eql('approved');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject Action",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Merchant rejects action, reverting invoice back to DRAFT state.",
+            "url": {
+              "raw": "{{baseUrl}}/api/approvals/{{approvalId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "approvals",
+                "{{approvalId}}",
+                "reject"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - PayPal Sandbox Invoicing",
+      "description": "Official PayPal Invoicing API v2 Sandbox integration. Enforces approved state verification before network calls.",
+      "item": [
+        {
+          "name": "Create Draft in PayPal Sandbox",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Maps internal draft to official PayPal invoice payload. Strictly verifies human authorization.",
+            "url": {
+              "raw": "{{baseUrl}}/api/paypal/invoices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "paypal",
+                "invoices"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoice_id\": \"{{invoiceId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test('PayPal Sandbox invoice created', function() {",
+                  "        pm.expect(data.paypal_invoice_id).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send PayPal Sandbox Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Dispatches official notification to payer in Sandbox environment. Requires prior owner approval.",
+            "url": {
+              "raw": "{{baseUrl}}/api/paypal/invoices/{{invoiceId}}/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "paypal",
+                "invoices",
+                "{{invoiceId}}",
+                "send"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Payment invoice delivered via PayPal Sandbox. Please review details.\",\n  \"send_to_recipient\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve & Send (Atomic Pipeline)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "One-click authorized dispatch: verifies owner identity, approves action, drafts and sends via PayPal Invoicing API.",
+            "url": {
+              "raw": "{{baseUrl}}/api/paypal/invoices/{{invoiceId}}/approve-and-send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "paypal",
+                "invoices",
+                "{{invoiceId}}",
+                "approve-and-send"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Authorized invoice from Sarah Designer via PayPal Sandbox.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07 - AI Assistant & Natural Language",
+      "description": "AI orchestrator with strict allowlist backend tools and natural-language invoice extraction.",
+      "item": [
+        {
+          "name": "AI Assistant Conversational Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Chat with AI accounts receivable assistant. Queries receivables with verified tools.",
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "chat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What is my total outstanding receivables across all clients right now?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('AI response returned with tool output', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.reply).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Extract Invoice from Natural Language",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Extracts structured draft preview from natural language (e.g. 'Create a $500 invoice for Acme for logo design due in 7 days').",
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/extract-invoice",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "extract-invoice"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Create an invoice for Acme Global Ventures for $1500 for website design consultation due in 14 days\",\n  \"timezone\": \"America/New_York\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('AI extracts structured draft preview', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.amount).to.eql('1500');",
+                  "    pm.expect(data.currency).to.eql('USD');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm & Persist Extracted Draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Validates and persists the AI-extracted invoice draft as an authoritative database record.",
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/confirm-extracted-invoice",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "confirm-extracted-invoice"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"currency\": \"USD\",\n  \"due_date\": \"2026-11-24\",\n  \"line_items\": [\n    {\n      \"name\": \"Website design consultation\",\n      \"quantity\": 1,\n      \"unit_price\": \"1500.00\",\n      \"tax\": \"0.00\"\n    }\n  ],\n  \"notes\": \"Generated from natural language prompt.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08 - Receivables Analytics",
+      "description": "Accounts receivable aging breakdown and cited AI portfolio analysis.",
+      "item": [
+        {
+          "name": "Dashboard Summary Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Real backend aggregate metrics: total outstanding, overdue, collected this month, and attention-needed queue.",
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "summary"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Dashboard aggregate data returned', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.currencies).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receivables Aging Buckets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Calculates 0\u20137, 8\u201330, 31\u201360, and 60+ days aging buckets with per-customer balance segregation.",
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/receivables?start_date=2026-10-01&end_date=2026-11-10&timezone=UTC",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "receivables?start_date=2026-10-01&end_date=2026-11-10&timezone=UTC"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "AI Receivables Portfolio Analysis",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "AI generates evidence-based financial summary with citations to exact invoice numbers.",
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/ai-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "ai-summary"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start_date\": \"2026-10-01\",\n  \"end_date\": \"2026-11-10\",\n  \"timezone\": \"UTC\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "09 - Payment Reminders & Policy",
+      "description": "Deterministic reminder stages, guardrails against shaming/threats, and Zapier webhook integration.",
+      "item": [
+        {
+          "name": "Evaluate Reminder Candidates",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Evaluates portfolio invoices against stages (upcoming, due today, 1-3d, 4-7d, 8-14d, 15+d overdue) and drafts respectful reminders.",
+            "url": {
+              "raw": "{{baseUrl}}/api/reminders/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reminders",
+                "evaluate"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    if (data.items && data.items.length > 0) {",
+                  "        pm.collectionVariables.set('reminderId', data.items[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Reminders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Retrieve drafted or dispatched payment reminders.",
+            "url": {
+              "raw": "{{baseUrl}}/api/reminders?status=draft",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reminders?status=draft"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Reminder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Merchant authorizes reminder message for delivery.",
+            "url": {
+              "raw": "{{baseUrl}}/api/reminders/{{reminderId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reminders",
+                "{{reminderId}}",
+                "approve"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Dispatch Reminder via Configured Channel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Dispatches approved reminder via Zapier Catch Hook or acknowledges manual outreach.",
+            "url": {
+              "raw": "{{baseUrl}}/api/reminders/{{reminderId}}/dispatch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reminders",
+                "{{reminderId}}",
+                "dispatch"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Run Scheduler Evaluation Cycle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Executes the periodic scheduler job to evaluate upcoming and overdue reminder policies.",
+            "url": {
+              "raw": "{{baseUrl}}/api/reminders/run-scheduler",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reminders",
+                "run-scheduler"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10 - Ledger & Audit Trail",
+      "description": "Application-layer append-only audit logs and financial settlement transactions.",
+      "item": [
+        {
+          "name": "List Audit Log Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Retrieve append-only audit trail scoped to authenticated merchant. Secrets are permanently scrubbed.",
+            "url": {
+              "raw": "{{baseUrl}}/api/audit-logs?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit-logs?limit=50"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Audit trail returned', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Financial Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "description": "Retrieve settled PayPal transaction ledger records with capture IDs and net amounts.",
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions?limit=50"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Transactions returned', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11 - PayPal Webhook Ingestion",
+      "description": "Official PayPal Webhook receiver. CRITICAL SECURITY INVARIANT: This endpoint cryptographically verifies signatures against PayPal's REST API. A manually posted JSON body without official PayPal headers will be rejected (HTTP 400/401).\n\nTO TEST LIVE SANDBOX WEBHOOKS:\n1. Open PayPal Developer Dashboard > Webhook Simulator (https://developer.paypal.com/dashboard/webhooksSimulator)\n2. Set Webhook URL to: <Your-Public-URL>/api/webhooks/paypal\n3. Select Event Type: INVOICING.INVOICE.PAID or PAYMENT.CAPTURE.COMPLETED\n4. Click 'Send test'\n5. The simulator transmits authentic headers and signature, which PayFlow cryptographically verifies and reconciles.",
+      "item": [
+        {
+          "name": "PayPal Webhook Receiver (Live Simulator Endpoint)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "PAYPAL-AUTH-ALGO",
+                "value": "SHA256withRSA",
+                "type": "text"
+              },
+              {
+                "key": "PAYPAL-CERT-URL",
+                "value": "https://api.sandbox.paypal.com/v1/notifications/certs/CERT-12345",
+                "type": "text"
+              },
+              {
+                "key": "PAYPAL-TRANSMISSION-ID",
+                "value": "trans-12345-sample",
+                "type": "text"
+              },
+              {
+                "key": "PAYPAL-TRANSMISSION-SIG",
+                "value": "dGhpcy1pcy1hLXNhbXBsZS1zaWduYXR1cmU=",
+                "type": "text"
+              },
+              {
+                "key": "PAYPAL-TRANSMISSION-TIME",
+                "value": "2026-11-10T12:00:00Z",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "description": "Receives PayPal webhook events. Cryptographically verifies signatures. Notice: Must include authentic PayPal cryptographic headers: PAYPAL-AUTH-ALGO, PAYPAL-CERT-URL, PAYPAL-TRANSMISSION-ID, PAYPAL-TRANSMISSION-SIG, PAYPAL-TRANSMISSION-TIME.",
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/paypal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "paypal"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"WH-SAMPLE-EVENT-001\",\n  \"event_type\": \"INVOICING.INVOICE.PAID\",\n  \"resource_type\": \"invoicing_invoice\",\n  \"resource\": {\n    \"id\": \"INV2-SAMPLE-ID\",\n    \"amount\": {\n      \"currency_code\": \"USD\",\n      \"value\": \"1500.00\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

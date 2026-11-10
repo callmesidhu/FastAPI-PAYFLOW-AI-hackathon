@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     # Optional Email & Automation
     EMAIL_PROVIDER: Optional[str] = Field(default=None, description="Optional transactional email provider")
     ZAPIER_WEBHOOK_URL: Optional[str] = Field(default=None, description="Optional Zapier webhook endpoint")
+    ZAPIER_SHARED_SECRET: Optional[str] = Field(default=None, description="Optional shared secret for signing Zapier webhooks")
+
+    # Security & Rate Limiting (Prompt 33)
+    DISABLE_RATE_LIMITS_FOR_TESTS: bool = Field(
+        default=False,
+        description="Whether to disable sliding-window rate limit checks during automated tests.",
+    )
 
     @field_validator("PAYPAL_BASE_URL")
     @classmethod

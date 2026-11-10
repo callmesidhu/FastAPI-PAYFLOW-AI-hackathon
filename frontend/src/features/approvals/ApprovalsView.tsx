@@ -8,6 +8,8 @@ import {
   LoadingState,
   PageHeader,
   StatusLabel,
+  TextArea,
+  TextInput,
 } from '../../components';
 import { apiClient } from '../../lib/api-client';
 
@@ -31,6 +33,30 @@ interface ApprovalItem {
   currency?: string | null;
 }
 
+interface ReminderItem {
+  id: string;
+  user_id: string;
+  invoice_id: string;
+  invoice_number: string;
+  customer_id: string;
+  customer_name: string;
+  customer_email: string;
+  stage: string;
+  status: 'draft' | 'ready_for_approval' | 'approved' | 'sent' | 'failed' | 'dismissed';
+  subject: string;
+  message_body: string;
+  payment_link?: string | null;
+  channel: string;
+  channel_configured: boolean;
+  channel_label: string;
+  retry_count: number;
+  delivery_error?: string | null;
+  created_at: string;
+  updated_at: string;
+  sent_at?: string | null;
+  approval_id?: string | null;
+}
+
 interface ApprovalListResponse {
   items: ApprovalItem[];
   total: number;
@@ -42,8 +68,15 @@ export const ApprovalsView: FC = () => {
 
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected' | 'reminders'>('pending');
   const [expandedPayloadId, setExpandedPayloadId] = useState<string | null>(null);
+
+  // Reminder State (Prompts 21 & 22)
+  const [reminders, setReminders] = useState<ReminderItem[]>([]);
+  const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
+  const [editSubject, setEditSubject] = useState<string>('');
+  const [editBody, setEditBody] = useState<string>('');
+  const [isEvaluatingReminders, setIsEvaluatingReminders] = useState<boolean>(false);
 
   const [actionAlert, setActionAlert] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
 
@@ -51,22 +84,120 @@ export const ApprovalsView: FC = () => {
   const [confirmingApproval, setConfirmingApproval] = useState<ApprovalItem | null>(null);
   const [confirmingRejection, setConfirmingRejection] = useState<ApprovalItem | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [dispatchingId, setDispatchingId] = useState<string | null>(null);
 
   const loadApprovals = async () => {
     try {
       setLoading(true);
       setActionAlert(null);
-      const filter = activeTab === 'pending' ? 'pending' : activeTab === 'approved' ? 'approved' : '';
-      let url = '/api/approvals';
-      if (filter) url += `?status=${filter}`;
-      const res = await apiClient<ApprovalListResponse>(url);
-      setApprovals(res.items || []);
+      if (activeTab === 'reminders') {
+        const remRes = await apiClient<{ items: ReminderItem[]; total: number }>('/api/reminders');
+        setReminders(remRes.items || []);
+      } else {
+        const filter =
+          activeTab === 'pending'
+            ? 'pending'
+            : activeTab === 'approved'
+            ? 'approved'
+            : activeTab === 'rejected'
+            ? 'rejected'
+            : '';
+        let url = '/api/approvals';
+        if (filter) url += `?status=${filter}`;
+        const res = await apiClient<ApprovalListResponse>(url);
+        setApprovals(res.items || []);
+      }
     } catch (err: any) {
-      console.warn('Failed to fetch approvals:', err);
-      setApprovals([]);
+      console.warn('Failed to fetch approvals/reminders:', err);
       setActionAlert({ type: 'error', message: err.message || 'Unable to load approval requests.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEvaluateReminders = async () => {
+    try {
+      setIsEvaluatingReminders(true);
+      setActionAlert(null);
+      const res = await apiClient<{ drafts_created_count: number; skipped_existing_count: number }>(
+        '/api/reminders/evaluate',
+        {
+          method: 'POST',
+          body: JSON.stringify({}),
+        }
+      );
+      setActionAlert({
+        type: 'success',
+        message: `Evaluation completed: ${res.drafts_created_count} reminder draft(s) prepared for review. (${res.skipped_existing_count} already up-to-date).`,
+      });
+      await loadApprovals();
+    } catch (err: any) {
+      setActionAlert({ type: 'error', message: err.message || 'Failed to run reminder evaluation.' });
+    } finally {
+      setIsEvaluatingReminders(false);
+    }
+  };
+
+  const handleApproveReminder = async (remId: string) => {
+    try {
+      setIsProcessing(true);
+      await apiClient(`/api/reminders/${remId}/approve`, { method: 'POST' });
+      setActionAlert({ type: 'success', message: 'Payment reminder approved for dispatch.' });
+      await loadApprovals();
+    } catch (err: any) {
+      setActionAlert({ type: 'error', message: err.message || 'Failed to approve reminder.' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDispatchReminder = async (remId: string) => {
+    try {
+      setDispatchingId(remId);
+      const res = await apiClient<{ message: string; channel: string }>('/api/reminders/' + remId + '/dispatch', {
+        method: 'POST',
+      });
+      setActionAlert({ type: 'success', message: res.message });
+      await loadApprovals();
+    } catch (err: any) {
+      setActionAlert({ type: 'error', message: err.message || 'Failed to dispatch reminder.' });
+    } finally {
+      setDispatchingId(null);
+    }
+  };
+
+  const handleRetryReminder = async (remId: string) => {
+    try {
+      setDispatchingId(remId);
+      const res = await apiClient<{ message: string }>('/api/reminders/' + remId + '/retry', {
+        method: 'POST',
+      });
+      setActionAlert({ type: 'success', message: res.message });
+      await loadApprovals();
+    } catch (err: any) {
+      setActionAlert({ type: 'error', message: err.message || 'Retry failed.' });
+    } finally {
+      setDispatchingId(null);
+    }
+  };
+
+  const handleSaveReminderEdit = async (remId: string) => {
+    try {
+      setIsProcessing(true);
+      await apiClient(`/api/reminders/${remId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          subject: editSubject.trim() || undefined,
+          message_body: editBody.trim() || undefined,
+        }),
+      });
+      setEditingReminderId(null);
+      setActionAlert({ type: 'success', message: 'Reminder copy updated successfully.' });
+      await loadApprovals();
+    } catch (err: any) {
+      setActionAlert({ type: 'error', message: err.message || 'Failed to update reminder.' });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -128,6 +259,38 @@ export const ApprovalsView: FC = () => {
       setConfirmingRejection(null);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleDispatchToPayPal = async (appr: ApprovalItem) => {
+    try {
+      setDispatchingId(appr.id);
+      setActionAlert(null);
+      const res = await apiClient<{
+        invoice_id: string;
+        invoice_number: string;
+        paypal_invoice_id: string;
+        paypal_invoice_url: string;
+        message: string;
+      }>('/api/paypal/invoices', {
+        method: 'POST',
+        body: JSON.stringify({
+          invoice_id: appr.resource_id,
+          approval_id: appr.id,
+        }),
+      });
+      setActionAlert({
+        type: 'success',
+        message: `Successfully created invoice in PayPal Sandbox (ID: ${res.paypal_invoice_id}).`,
+      });
+      await loadApprovals();
+    } catch (err: any) {
+      setActionAlert({
+        type: 'error',
+        message: err.message || 'Failed to dispatch invoice to PayPal Sandbox.',
+      });
+    } finally {
+      setDispatchingId(null);
     }
   };
 
@@ -233,11 +396,244 @@ export const ApprovalsView: FC = () => {
         >
           Rejected & Invalidated
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('reminders')}
+          style={{
+            padding: '10px 20px',
+            background: activeTab === 'reminders' ? 'var(--color-sand)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'reminders' ? '2px solid var(--color-ink)' : '2px solid transparent',
+            color: 'var(--color-ink)',
+            fontWeight: activeTab === 'reminders' ? 600 : 400,
+            fontSize: 13,
+            cursor: 'pointer',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span>Payment Reminders</span>
+          {reminders.filter((r) => r.status === 'ready_for_approval').length > 0 && (
+            <span
+              style={{
+                backgroundColor: 'var(--color-pending)',
+                color: '#FAF7F2',
+                fontSize: 11,
+                padding: '1px 6px',
+                borderRadius: 2,
+                fontWeight: 600,
+              }}
+            >
+              {reminders.filter((r) => r.status === 'ready_for_approval').length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Main Content */}
       {loading ? (
         <LoadingState label="RETRIEVING APPROVAL REQUESTS..." />
+      ) : activeTab === 'reminders' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Reminders Controls & Channel Status */}
+          <div
+            style={{
+              padding: '16px 20px',
+              backgroundColor: 'var(--color-cream)',
+              border: 'var(--border-hairline)',
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-muted)', fontWeight: 600 }}>
+                DELIVERY CHANNEL STATUS (PROMPT 22)
+              </div>
+              <div style={{ fontSize: 13, marginTop: 4, fontWeight: 500 }}>
+                {reminders[0]?.channel_label || 'Ready for approval (Manual delivery: no transactional email configured)'}
+              </div>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleEvaluateReminders}
+              disabled={isEvaluatingReminders}
+            >
+              {isEvaluatingReminders ? 'SCANNING INVOICES...' : 'EVALUATE REMINDERS NOW →'}
+            </Button>
+          </div>
+
+          {reminders.length === 0 ? (
+            <EmptyState
+              title="No Payment Reminders in Ledger"
+              description="Click 'Evaluate Reminders Now' to scan invoices against policy stages (upcoming, due today, 1-3d, 4-7d, 8-14d, 15+d overdue). Eligible invoices will appear here as unapproved drafts."
+              action={
+                <Button variant="secondary" size="sm" onClick={handleEvaluateReminders}>
+                  Scan Invoices Now
+                </Button>
+              }
+            />
+          ) : (
+            reminders.map((rem) => (
+              <div
+                key={rem.id}
+                style={{
+                  backgroundColor: 'var(--color-sand)',
+                  border: 'var(--border-hairline)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: 24,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16,
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-muted)' }}>
+                      INVOICE REMINDER • STAGE: {rem.stage.toUpperCase().replace(/_/g, ' ')}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, color: 'var(--color-ink)', marginTop: 4 }}>
+                      {rem.invoice_number} — {rem.customer_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--color-muted)' }}>
+                      Recipient: {rem.customer_email} • Channel: {rem.channel.toUpperCase()}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <StatusLabel status={rem.status} size="sm" />
+                  </div>
+                </div>
+
+                {/* Inline Editing Form or Message Preview */}
+                {editingReminderId === rem.id ? (
+                  <div style={{ backgroundColor: 'var(--color-cream)', padding: 16, border: 'var(--border-hairline)' }}>
+                    <div style={{ marginBottom: 12 }}>
+                      <TextInput
+                        label="SUBJECT LINE"
+                        value={editSubject}
+                        onChange={(e) => setEditSubject(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <TextArea
+                        label="MESSAGE BODY (RESPECTFUL & FACTUAL)"
+                        rows={6}
+                        value={editBody}
+                        onChange={(e) => setEditBody(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => void handleSaveReminderEdit(rem.id)}
+                        disabled={isProcessing}
+                      >
+                        SAVE EDITED COPY
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingReminderId(null)}
+                      >
+                        CANCEL
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      backgroundColor: 'var(--color-cream)',
+                      border: 'var(--border-hairline)',
+                      padding: 16,
+                      fontSize: 13,
+                      lineHeight: 1.6,
+                      whiteSpace: 'pre-wrap',
+                      fontFamily: 'var(--font-body)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 8, borderBottom: 'var(--border-hairline)', paddingBottom: 6 }}>
+                      Subject: {rem.subject}
+                    </div>
+                    {rem.message_body}
+                  </div>
+                )}
+
+                {/* Failure error notification */}
+                {rem.delivery_error && (
+                  <div style={{ padding: '8px 12px', backgroundColor: 'var(--color-overdue-bg)', border: '1px solid var(--color-overdue)', color: 'var(--color-overdue)', fontSize: 12 }}>
+                    <strong>Delivery Error (Attempt {rem.retry_count}/3):</strong> {rem.delivery_error}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {rem.status === 'ready_for_approval' && (
+                    <>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => void handleApproveReminder(rem.id)}
+                        disabled={isProcessing}
+                      >
+                        APPROVE REMINDER →
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingReminderId(rem.id);
+                          setEditSubject(rem.subject);
+                          setEditBody(rem.message_body);
+                        }}
+                      >
+                        EDIT COPY
+                      </Button>
+                    </>
+                  )}
+
+                  {rem.status === 'approved' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => void handleDispatchReminder(rem.id)}
+                      disabled={dispatchingId === rem.id}
+                    >
+                      {dispatchingId === rem.id ? 'DISPATCHING...' : 'DISPATCH REMINDER →'}
+                    </Button>
+                  )}
+
+                  {rem.status === 'failed' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => void handleRetryReminder(rem.id)}
+                      disabled={dispatchingId === rem.id || rem.retry_count >= 3}
+                    >
+                      {dispatchingId === rem.id ? 'RETRYING...' : `RETRY DISPATCH (${rem.retry_count}/3) →`}
+                    </Button>
+                  )}
+
+                  {rem.status === 'sent' && (
+                    <div style={{ fontSize: 12, color: 'var(--color-paid)', fontWeight: 600 }}>
+                      ✓ Dispatched via {rem.channel.toUpperCase()} {rem.sent_at ? `on ${new Date(rem.sent_at).toLocaleDateString()}` : ''}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       ) : approvals.length === 0 ? (
         <EmptyState
           title={
@@ -431,6 +827,7 @@ export const ApprovalsView: FC = () => {
                     ) : appr.status === 'approved' ? (
                       <span style={{ color: 'var(--color-paid)', fontWeight: 600 }}>
                         ✓ Authorized on {appr.approved_at ? new Date(appr.approved_at).toLocaleString() : 'recently'}.
+                        {appr.execution_result_ref && ` (PayPal Ref: ${appr.execution_result_ref})`}
                       </span>
                     ) : (
                       <span style={{ color: 'var(--color-overdue)' }}>
@@ -457,6 +854,29 @@ export const ApprovalsView: FC = () => {
                       >
                         Authorize & Approve
                       </Button>
+                    </div>
+                  )}
+
+                  {appr.status === 'approved' && (
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      {!appr.execution_result_ref && appr.action_type === 'create_paypal_invoice' ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => void handleDispatchToPayPal(appr)}
+                          disabled={dispatchingId === appr.id}
+                        >
+                          {dispatchingId === appr.id ? 'CREATING IN PAYPAL...' : 'DISPATCH TO PAYPAL SANDBOX →'}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/invoices/${appr.resource_id}`)}
+                        >
+                          View Invoice Details →
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

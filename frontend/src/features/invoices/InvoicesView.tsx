@@ -1,6 +1,7 @@
 import { useEffect, useState, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  AgInvoiceGrid,
   Alert,
   Button,
   ConfirmDialog,
@@ -41,6 +42,7 @@ export const InvoicesView: FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'ag-grid' | 'table'>('ag-grid');
   const [actionAlert, setActionAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Draft deletion dialog
@@ -92,6 +94,22 @@ export const InvoicesView: FC = () => {
 
   const handleSubmitForApproval = async (e: React.MouseEvent, invoice: InvoiceListItem) => {
     e.stopPropagation();
+    try {
+      await apiClient(`/api/invoices/${invoice.internal_id}/submit-for-approval`, { method: 'POST' });
+      setActionAlert({
+        type: 'success',
+        message: `Invoice ${invoice.invoice_number} submitted to Approval Center.`,
+      });
+      await loadInvoices();
+    } catch (err: any) {
+      setActionAlert({
+        type: 'error',
+        message: err.message || 'Could not submit invoice for approval.',
+      });
+    }
+  };
+
+  const handleSubmitForApprovalRow = async (invoice: InvoiceListItem) => {
     try {
       await apiClient(`/api/invoices/${invoice.internal_id}/submit-for-approval`, { method: 'POST' });
       setActionAlert({
@@ -177,6 +195,53 @@ export const InvoicesView: FC = () => {
         </Button>
       </div>
 
+      {/* Grid Mode Selector Bar */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+          padding: '8px 12px',
+          backgroundColor: 'var(--color-cream)',
+          border: 'var(--border-hairline)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--color-muted)',
+            }}
+          >
+            GRID ENGINE:
+          </span>
+          <Button
+            variant={viewMode === 'ag-grid' ? 'primary' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('ag-grid')}
+            style={{ padding: '3px 10px', fontSize: 11 }}
+          >
+            AG Grid Explorer (Sponsor)
+          </Button>
+          <Button
+            variant={viewMode === 'table' ? 'primary' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('table')}
+            style={{ padding: '3px 10px', fontSize: 11 }}
+          >
+            Minimalist Table
+          </Button>
+        </div>
+
+        <span style={{ fontSize: 11, color: 'var(--color-muted)', fontFamily: 'monospace' }}>
+          {invoices.length} {invoices.length === 1 ? 'record' : 'records'} loaded
+        </span>
+      </div>
+
       {/* Main Content Area */}
       {loading ? (
         <LoadingState label="RETRIEVING INVOICE RECORDS..." />
@@ -193,6 +258,12 @@ export const InvoicesView: FC = () => {
               Draft First Invoice
             </Button>
           }
+        />
+      ) : viewMode === 'ag-grid' ? (
+        <AgInvoiceGrid
+          rowData={invoices}
+          onSubmitForApproval={(inv) => void handleSubmitForApprovalRow(inv)}
+          onDeleteDraft={(inv) => setInvoiceToDelete(inv)}
         />
       ) : (
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>

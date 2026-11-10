@@ -14,10 +14,11 @@ export type InvoiceStatusType =
 
 export interface StatusLabelProps {
   status: InvoiceStatusType | string;
+  label?: string;
   size?: 'sm' | 'md';
 }
 
-export const StatusLabel: FC<StatusLabelProps> = ({ status, size = 'md' }) => {
+export const StatusLabel: FC<StatusLabelProps> = ({ status, label, size = 'md' }) => {
   const normalized = status.toLowerCase();
 
   const getStatusConfig = () => {
@@ -95,7 +96,7 @@ export const StatusLabel: FC<StatusLabelProps> = ({ status, size = 'md' }) => {
       }}
       className={`payflow-status-label status-${normalized}`}
     >
-      {config.label}
+      {label || config.label}
     </span>
   );
 };
