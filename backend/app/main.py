@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.logging import logger
+from app.core.middleware import CorrelationIdMiddleware
 from app.db.mongodb import db_manager, get_db_status
 from app.db.indexes import create_indexes
 
@@ -68,8 +69,11 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With", "X-Correlation-ID", "X-Request-ID"],
 )
+
+# Correlation ID and structured access logging middleware (Prompt 40)
+app.add_middleware(CorrelationIdMiddleware)
 
 # Mount core API router
 app.include_router(api_router)
