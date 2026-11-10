@@ -1,29 +1,92 @@
-"""In-memory async MongoDB mock supporting queries, projections, sorting, and pagination."""
+"""In-memory async MongoDB mock supporting queries, projections, sorting, and pagination.
+
+Supports:
+- Field equality, $regex, $ne, $in, $nin, $lt, $lte, $gt, $gte
+- Logical $or and $and
+- Dotted-path field access (e.g. "items.name" searches nested list dicts)
+- Date/string comparison normalisation (datetime.date vs ISO string)
+- update_many for bulk $set operations
+"""
 
 import re
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 
+def _normalise(v: Any) -> Any:
+    """Normalise datetime.date → ISO string for consistent comparisons."""
+    if isinstance(v, date):
+        return str(v)
+    return v
+
+
 def match_field(doc_val: Any, cond: Any) -> bool:
-    """Evaluate MongoDB field matching rules."""
+    """Evaluate MongoDB single-field matching rules."""
     if isinstance(cond, dict):
         if "$regex" in cond:
             pattern = cond["$regex"]
             flags = re.IGNORECASE if cond.get("$options") == "i" else 0
             if doc_val is None:
                 return False
+            # For list fields (e.g. items), test each element's string representation
+            if isinstance(doc_val, list):
+                return any(bool(re.search(pattern, str(item), flags)) for item in doc_val)
             return bool(re.search(pattern, str(doc_val), flags))
         if "$ne" in cond:
-            return doc_val != cond["$ne"]
+            return _normalise(doc_val) != _normalise(cond["$ne"])
         if "$in" in cond:
-            return doc_val in cond["$in"]
+            return _normalise(doc_val) in [_normalise(v) for v in cond["$in"]]
         if "$nin" in cond:
-            return doc_val not in cond["$nin"]
-    return doc_val == cond
+            return _normalise(doc_val) not in [_normalise(v) for v in cond["$nin"]]
+        if "$lt" in cond:
+            if doc_val is None:
+                return False
+            return _normalise(doc_val) < _normalise(cond["$lt"])
+        if "$lte" in cond:
+            if doc_val is None:
+                return False
+            return _normalise(doc_val) <= _normalise(cond["$lte"])
+        if "$gt" in cond:
+            if doc_val is None:
+                return False
+            return _normalise(doc_val) > _normalise(cond["$gt"])
+        if "$gte" in cond:
+            if doc_val is None:
+                return False
+            return _normalise(doc_val) >= _normalise(cond["$gte"])
+    return _normalise(doc_val) == _normalise(cond)
+
+
+def _get_nested(doc: Dict[str, Any], path: str) -> Any:
+    """Resolve a dotted field path, returning a flat list of values for array fields.
+
+    E.g. "items.name" on a doc with items=[{"name":"A"}, {"name":"B"}]
+    returns ["A", "B"].
+    """
+    parts = path.split(".", 1)
+    if len(parts) == 1:
+        return doc.get(parts[0])
+
+    head, rest = parts
+    sub = doc.get(head)
+    if isinstance(sub, list):
+        # Collect values from each element
+        results = []
+        for item in sub:
+            if isinstance(item, dict):
+                v = _get_nested(item, rest)
+                if isinstance(v, list):
+                    results.extend(v)
+                elif v is not None:
+                    results.append(v)
+        return results if results else None
+    if isinstance(sub, dict):
+        return _get_nested(sub, rest)
+    return None
 
 
 def match_document(doc: Dict[str, Any], query: Dict[str, Any]) -> bool:
-    """Evaluate full document matching with $or support."""
+    """Evaluate full document matching with $or / $and and dotted-path support."""
     for key, val in query.items():
         if key == "$or":
             if not isinstance(val, list):
@@ -38,7 +101,18 @@ def match_document(doc: Dict[str, Any], query: Dict[str, Any]) -> bool:
                 return False
             continue
 
-        if not match_field(doc.get(key), val):
+        # Resolve dotted paths (e.g. "items.name")
+        doc_val = _get_nested(doc, key) if "." in key else doc.get(key)
+
+        if isinstance(doc_val, list) and isinstance(val, dict) and "$regex" in val:
+            # For array fields, check if any element matches the regex
+            pattern = val["$regex"]
+            flags = re.IGNORECASE if val.get("$options") == "i" else 0
+            if not any(bool(re.search(pattern, str(v), flags)) for v in doc_val):
+                return False
+            continue
+
+        if not match_field(doc_val, val):
             return False
     return True
 
@@ -50,14 +124,14 @@ class MockAsyncCursor:
         self.items = list(items)
 
     def sort(self, key_or_list: Any, direction: int = 1) -> "MockAsyncCursor":
-        # Handle simple string or list of (key, direction)
+        # Handle simple string or list of (key, direction) tuples
         if isinstance(key_or_list, list) and key_or_list:
             key, direction = key_or_list[0]
         else:
             key = key_or_list
 
         reverse = (direction == -1)
-        self.items.sort(key=lambda d: str(d.get(key, "")), reverse=reverse)
+        self.items.sort(key=lambda d: str(_normalise(d.get(key, ""))), reverse=reverse)
         return self
 
     def skip(self, n: int) -> "MockAsyncCursor":
@@ -111,11 +185,19 @@ class MockCollection:
     async def count_documents(self, query: Dict[str, Any]) -> int:
         return sum(1 for d in self.docs if match_document(d, query))
 
-    async def replace_one(self, filter_query: Dict[str, Any], replacement: Dict[str, Any]) -> Any:
+    async def replace_one(
+        self,
+        filter_query: Dict[str, Any],
+        replacement: Dict[str, Any],
+        upsert: bool = False,
+    ) -> Any:
         for idx, d in enumerate(self.docs):
             if match_document(d, filter_query):
                 self.docs[idx] = dict(replacement)
                 return True
+        if upsert:
+            self.docs.append(dict(replacement))
+            return True
         return False
 
     async def update_one(self, filter_query: Dict[str, Any], update: Dict[str, Any]) -> Any:
@@ -125,6 +207,21 @@ class MockCollection:
                     d.update(update["$set"])
                 return True
         return False
+
+    async def update_many(self, filter_query: Dict[str, Any], update: Dict[str, Any]) -> Any:
+        """Update all matching documents. Returns a result with .modified_count."""
+        modified_count = 0
+        for d in self.docs:
+            if match_document(d, filter_query):
+                if "$set" in update:
+                    d.update(update["$set"])
+                modified_count += 1
+
+        class _UpdateResult:
+            def __init__(self, n: int) -> None:
+                self.modified_count = n
+
+        return _UpdateResult(modified_count)
 
     async def delete_one(self, filter_query: Dict[str, Any]) -> Any:
         for idx, d in enumerate(self.docs):
