@@ -44,11 +44,28 @@ interface InvoiceDetail {
   notes?: string | null;
 }
 
+interface TimelineEvent {
+  id: string;
+  action: string;
+  action_label: string;
+  actor_type: string;
+  timestamp: string;
+  result: string;
+  metadata?: Record<string, any>;
+}
+
+interface InvoiceTimelineResponse {
+  invoice_id: string;
+  invoice_number: string;
+  events: TimelineEvent[];
+}
+
 export const InvoiceDetailView: FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -58,6 +75,11 @@ export const InvoiceDetailView: FC = () => {
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [isSubmittingApproval, setIsSubmittingApproval] = useState<boolean>(false);
 
+  // PayPal Send Dialog state
+  const [showSendDialog, setShowSendDialog] = useState<boolean>(false);
+  const [isSending, setIsSending] = useState<boolean>(false);
+  const [sendNote, setSendNote] = useState<string>('');
+
   const loadInvoice = async () => {
     if (!id) return;
     try {
@@ -65,6 +87,15 @@ export const InvoiceDetailView: FC = () => {
       setError(null);
       const data = await apiClient<InvoiceDetail>(`/api/invoices/${id}`);
       setInvoice(data);
+
+      try {
+        const timelineData = await apiClient<InvoiceTimelineResponse>(`/api/invoices/${id}/timeline`);
+        if (timelineData && timelineData.events) {
+          setTimelineEvents(timelineData.events);
+        }
+      } catch (tlErr) {
+        console.warn('Could not load invoice timeline:', tlErr);
+      }
     } catch (err: any) {
       console.error('Failed to load invoice:', err);
       setError(err.message || 'Invoice record could not be retrieved.');
@@ -112,6 +143,45 @@ export const InvoiceDetailView: FC = () => {
       });
     } finally {
       setIsSubmittingApproval(false);
+    }
+  };
+
+  const handleApproveAndSend = async () => {
+    if (!id) return;
+    try {
+      setIsSending(true);
+      setActionNotice(null);
+      const endpoint = invoice?.status === 'created'
+        ? `/api/paypal/invoices/${id}/send`
+        : `/api/paypal/invoices/${id}/approve-and-send`;
+
+      const res = await apiClient<{
+        invoice_id: string;
+        invoice_number: string;
+        paypal_invoice_id: string;
+        paypal_invoice_url: string;
+        message: string;
+      }>(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          note: sendNote.trim() || undefined,
+          send_to_recipient: true,
+        }),
+      });
+
+      setActionNotice({
+        type: 'success',
+        message: res.message || 'Invoice dispatched via PayPal Developer Sandbox.',
+      });
+      setShowSendDialog(false);
+      await loadInvoice();
+    } catch (err: any) {
+      setActionNotice({
+        type: 'error',
+        message: err.message || 'Failed to dispatch invoice via PayPal Sandbox.',
+      });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -176,8 +246,14 @@ export const InvoiceDetailView: FC = () => {
             )}
 
             {invoice.status === 'pending_approval' && (
-              <Button variant="primary" size="sm" onClick={() => navigate('/approvals')}>
+              <Button variant="outline" size="sm" onClick={() => navigate('/approvals')}>
                 Review in Approval Center →
+              </Button>
+            )}
+
+            {['pending_approval', 'created'].includes(invoice.status) && (
+              <Button variant="primary" size="sm" onClick={() => setShowSendDialog(true)}>
+                Approve & Send via PayPal Sandbox
               </Button>
             )}
 
@@ -398,29 +474,37 @@ export const InvoiceDetailView: FC = () => {
           </p>
         </div>
 
-        {invoice.paypal_invoice_url ? (
-          <a
-            href={invoice.paypal_invoice_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              padding: '10px 18px',
-              backgroundColor: 'var(--color-ink)',
-              color: '#FAF7F2',
-              textDecoration: 'none',
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Open in PayPal Sandbox ↗
-          </a>
-        ) : invoice.status === 'pending_approval' ? (
-          <Button variant="secondary" size="sm" onClick={() => navigate('/approvals')}>
-            Authorize Send in Approvals
-          </Button>
-        ) : null}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          {['draft', 'pending_approval', 'created'].includes(invoice.status) && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowSendDialog(true)}
+            >
+              Approve & Send via PayPal Sandbox →
+            </Button>
+          )}
+
+          {invoice.paypal_invoice_url && (
+            <a
+              href={invoice.paypal_invoice_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                padding: '10px 18px',
+                backgroundColor: 'var(--color-ink)',
+                color: '#FAF7F2',
+                textDecoration: 'none',
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Open in PayPal Sandbox ↗
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Line Items Table */}
@@ -596,103 +680,196 @@ export const InvoiceDetailView: FC = () => {
         >
           <div
             style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: 16,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--color-ink)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               marginBottom: 16,
               borderBottom: 'var(--border-hairline)',
               paddingBottom: 8,
             }}
           >
-            Activity Audit Timeline
+            <div
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: 16,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--color-ink)',
+              }}
+            >
+              Append-Only Audit Timeline
+            </div>
+            <span
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--color-muted)',
+                fontWeight: 600,
+              }}
+            >
+              Ledger Immutable
+            </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Step 1: Created */}
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 1,
-                  backgroundColor: 'var(--color-ink)',
-                  marginTop: 6,
-                }}
-              />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Draft Created</div>
-                <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
-                  {new Date(invoice.created_at).toLocaleString()}
-                </div>
-              </div>
-            </div>
+            {timelineEvents.length > 0 ? (
+              timelineEvents.map((evt) => {
+                const isPaypal = evt.actor_type === 'paypal_webhook';
+                const isSystem = evt.actor_type === 'system';
+                const isAI = evt.actor_type === 'ai_assistant';
+                const dotColor = isPaypal
+                  ? 'var(--color-paid)'
+                  : evt.action.includes('approval') || evt.action.includes('submit')
+                  ? 'var(--color-pending)'
+                  : 'var(--color-ink)';
 
-            {/* Step 2: Submitted for Approval */}
-            {invoice.status !== 'draft' && (
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 1,
-                    backgroundColor: 'var(--color-pending)',
-                    marginTop: 6,
-                  }}
-                />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>Submitted for Human Approval</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
-                    {new Date(invoice.updated_at).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            )}
+                const actorLabel = isPaypal
+                  ? 'PAYPAL'
+                  : isAI
+                  ? 'AI AGENT'
+                  : isSystem
+                  ? 'SYSTEM'
+                  : 'MERCHANT';
 
-            {/* Step 3: Dispatched via PayPal Sandbox */}
-            {invoice.sent_at && (
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 1,
-                    backgroundColor: 'var(--color-sand)',
-                    border: '1px solid var(--color-ink)',
-                    marginTop: 6,
-                  }}
-                />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>Dispatched via PayPal Sandbox</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
-                    {new Date(invoice.sent_at).toLocaleString()}
+                return (
+                  <div key={evt.id} style={{ display: 'flex', gap: 12 }}>
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 1,
+                        backgroundColor: dotColor,
+                        marginTop: 6,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-ink)' }}>
+                          {evt.action_label}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            padding: '1px 6px',
+                            backgroundColor: 'var(--color-cream)',
+                            border: 'var(--border-hairline)',
+                            color: 'var(--color-muted)',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {actorLabel}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 2 }}>
+                        {new Date(evt.timestamp).toLocaleString()}
+                      </div>
+                      {evt.metadata && Object.keys(evt.metadata).length > 0 && (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                            color: 'var(--color-muted)',
+                            wordBreak: 'break-all',
+                          }}
+                        >
+                          {evt.metadata.capture_id && <span>Capture: {evt.metadata.capture_id} • </span>}
+                          {evt.metadata.paypal_invoice_id && <span>PayPal ID: {evt.metadata.paypal_invoice_id} • </span>}
+                          {evt.metadata.amount && <span>Settled: ${parseFloat(evt.metadata.amount).toFixed(2)} {invoice.currency}</span>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <>
+                {/* Fallback to basic invoice timestamps */}
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 1,
+                      backgroundColor: 'var(--color-ink)',
+                      marginTop: 6,
+                    }}
+                  />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Draft Created</div>
+                    <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
+                      {new Date(invoice.created_at).toLocaleString()}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Step 4: Payment Reconciled */}
-            {invoice.paid_at && (
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 1,
-                    backgroundColor: 'var(--color-paid)',
-                    marginTop: 6,
-                  }}
-                />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-paid)' }}>
-                    Payment Reconciled (PayPal Webhook)
+                {invoice.status !== 'draft' && (
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 1,
+                        backgroundColor: 'var(--color-pending)',
+                        marginTop: 6,
+                      }}
+                    />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>Submitted for Human Approval</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
+                        {new Date(invoice.updated_at).toLocaleString()}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
-                    {new Date(invoice.paid_at).toLocaleString()}
+                )}
+
+                {invoice.sent_at && (
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 1,
+                        backgroundColor: 'var(--color-sand)',
+                        border: '1px solid var(--color-ink)',
+                        marginTop: 6,
+                      }}
+                    />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>Dispatched via PayPal Sandbox</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
+                        {new Date(invoice.sent_at).toLocaleString()}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                )}
+
+                {invoice.paid_at && (
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 1,
+                        backgroundColor: 'var(--color-paid)',
+                        marginTop: 6,
+                      }}
+                    />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-paid)' }}>
+                        Payment Reconciled (PayPal Webhook)
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
+                        {new Date(invoice.paid_at).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -709,6 +886,111 @@ export const InvoiceDetailView: FC = () => {
         isLoading={isDeleting}
         onConfirm={() => void handleDelete()}
         onCancel={() => setShowDeleteDialog(false)}
+      />
+
+      {/* Approve & Send via PayPal Sandbox Dialog */}
+      <ConfirmDialog
+        isOpen={showSendDialog}
+        title="Approve & Send via PayPal Sandbox"
+        message={
+          <div>
+            <div
+              style={{
+                padding: '12px 16px',
+                backgroundColor: 'var(--color-sand)',
+                border: '1px dashed var(--color-hairline)',
+                marginBottom: 16,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    backgroundColor: 'var(--color-ink)',
+                    color: '#FAF7F2',
+                    padding: '2px 6px',
+                  }}
+                >
+                  SANDBOX SIMULATION
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>Zero Real Funds Transacted</span>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-muted)' }}>
+                This invoice will be delivered via official PayPal Developer Sandbox APIs. Test sandbox accounts can preview and settle this payment without real money.
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 12, marginBottom: 16 }}>
+              <div>
+                <div style={{ color: 'var(--color-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Customer Recipient</div>
+                <div style={{ fontWeight: 600, marginTop: 2 }}>{invoice.customer_name || 'Customer'}</div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--color-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Invoiced Amount</div>
+                <div style={{ fontWeight: 600, marginTop: 2, fontFamily: 'var(--font-heading)', fontSize: 14 }}>
+                  ${parseFloat(invoice.total).toLocaleString('en-US', { minimumFractionDigits: 2 })} {invoice.currency}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--color-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Payment Due</div>
+                <div style={{ fontWeight: 600, marginTop: 2 }}>{invoice.due_date}</div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--color-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Target Destination</div>
+                <div style={{ fontWeight: 600, marginTop: 2, fontFamily: 'monospace', fontSize: 11 }}>
+                  PayPal Sandbox Invoicing v2
+                </div>
+              </div>
+            </div>
+
+            {invoice.paypal_invoice_url && (
+              <div style={{ marginBottom: 16, fontSize: 11 }}>
+                <span style={{ color: 'var(--color-muted)' }}>Sandbox Link: </span>
+                <span style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{invoice.paypal_invoice_url}</span>
+              </div>
+            )}
+
+            <div style={{ marginTop: 12 }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  marginBottom: 6,
+                }}
+              >
+                Delivery Note (Optional)
+              </label>
+              <textarea
+                value={sendNote}
+                onChange={(e) => setSendNote(e.target.value)}
+                placeholder="Add an optional greeting or memo included in the PayPal Sandbox notification..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  border: 'var(--border-hairline)',
+                  backgroundColor: 'var(--color-cream)',
+                  padding: '8px 12px',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-sans)',
+                  color: 'var(--color-ink)',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+          </div>
+        }
+        confirmLabel={isSending ? 'DISPATCHING VIA SANDBOX...' : 'APPROVE & SEND VIA PAYPAL SANDBOX'}
+        cancelLabel="CANCEL"
+        variant="primary"
+        isLoading={isSending}
+        onConfirm={() => void handleApproveAndSend()}
+        onCancel={() => setShowSendDialog(false)}
       />
     </div>
   );

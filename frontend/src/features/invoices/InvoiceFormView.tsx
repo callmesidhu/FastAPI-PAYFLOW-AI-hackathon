@@ -92,6 +92,90 @@ export const InvoiceFormView: FC = () => {
   const [newCustCompany, setNewCustCompany] = useState<string>('');
   const [quickCustLoading, setQuickCustLoading] = useState<boolean>(false);
 
+  // AI Fast-Draft state (Prompt 19)
+  const [fastDraftText, setFastDraftText] = useState<string>('');
+  const [fastDraftLoading, setFastDraftLoading] = useState<boolean>(false);
+  const [fastDraftSuggestionNotice, setFastDraftSuggestionNotice] = useState<string | null>(null);
+  const [fastDraftClarification, setFastDraftClarification] = useState<string | null>(null);
+  const [fastDraftMatches, setFastDraftMatches] = useState<CustomerOption[]>([]);
+
+  const handleFastDraftExtract = async (overrideText?: string) => {
+    const textToExtract = overrideText || fastDraftText;
+    if (!textToExtract.trim() || fastDraftLoading) return;
+    setFastDraftLoading(true);
+    setFastDraftClarification(null);
+    setFastDraftMatches([]);
+    setFastDraftSuggestionNotice(null);
+
+    try {
+      const res = await apiClient<{
+        is_suggestion: boolean;
+        clarification_needed: boolean;
+        clarification_question?: string | null;
+        ambiguity_reason?: string | null;
+        customer_matches: CustomerOption[];
+        extracted_draft?: {
+          customer_id?: string | null;
+          customer_name: string;
+          currency: string;
+          due_date: string;
+          notes?: string | null;
+          items: Array<{ name: string; quantity: string | number; unit_price: string | number; tax: string | number }>;
+        } | null;
+      }>('/api/ai/extract-invoice', {
+        method: 'POST',
+        body: JSON.stringify({
+          text: textToExtract.trim(),
+          timezone: 'UTC',
+        }),
+      });
+
+      if (res.clarification_needed) {
+        setFastDraftClarification(res.clarification_question || 'Additional clarification required.');
+        if (res.customer_matches && res.customer_matches.length > 0) {
+          setFastDraftMatches(res.customer_matches);
+        }
+        return;
+      }
+
+      if (res.extracted_draft) {
+        const d = res.extracted_draft;
+        if (d.customer_id) {
+          setCustomerId(d.customer_id);
+        }
+        if (d.currency) {
+          setCurrency(d.currency);
+        }
+        if (d.due_date) {
+          setDueDate(d.due_date);
+        }
+        if (d.notes) {
+          setNotes(d.notes);
+        }
+        if (d.items && d.items.length > 0) {
+          setItems(
+            d.items.map((it, idx) => ({
+              id: `fast-item-${idx + 1}`,
+              name: it.name,
+              description: '',
+              quantity: String(it.quantity),
+              unit_price: String(it.unit_price),
+              tax: String(it.tax || '0.00'),
+            }))
+          );
+        }
+        setFastDraftSuggestionNotice(
+          '✦ AI SUGGESTION EXTRACTED (UNCONFIRMED): Pre-filled below. Review and edit before saving as an authoritative draft.'
+        );
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to extract invoice parameters.';
+      setFastDraftClarification(msg);
+    } finally {
+      setFastDraftLoading(false);
+    }
+  };
+
   // Load initial data: customers and existing invoice if editing
   useEffect(() => {
     let isMounted = true;
@@ -205,10 +289,14 @@ export const InvoiceFormView: FC = () => {
 
   const previewTotal = previewSubtotal + previewTax;
 
+  // Quick customer error state
+  const [quickCustError, setQuickCustError] = useState<string | null>(null);
+
   // Handle quick inline customer creation
   const handleCreateQuickCustomer = async () => {
+    setQuickCustError(null);
     if (!newCustName.trim() || !newCustEmail.trim()) {
-      alert('Please enter a customer name and valid email.');
+      setQuickCustError('Please enter a customer name and valid email.');
       return;
     }
     try {
@@ -228,7 +316,7 @@ export const InvoiceFormView: FC = () => {
       setNewCustEmail('');
       setNewCustCompany('');
     } catch (err: any) {
-      alert(err.message || 'Failed to create customer.');
+      setQuickCustError(err.message || 'Failed to create customer.');
     } finally {
       setQuickCustLoading(false);
     }
@@ -344,6 +432,125 @@ export const InvoiceFormView: FC = () => {
         </div>
       )}
 
+      {!isEditMode && (
+        <div
+          style={{
+            backgroundColor: 'var(--color-cream)',
+            border: 'var(--border-hairline)',
+            borderRadius: 'var(--radius-sm)',
+            padding: 20,
+            marginBottom: 24,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              letterSpacing: 'var(--tracking-widest)',
+              textTransform: 'uppercase',
+              color: 'var(--color-muted)',
+              fontWeight: 600,
+              marginBottom: 6,
+            }}
+          >
+            AI NATURAL LANGUAGE FAST-DRAFT (PROMPT 19)
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--color-ink)', margin: '0 0 12px 0' }}>
+            Type a natural billing instruction (e.g. <em>"Create a $500 invoice for John Smith for website development, due in seven days"</em>) to extract and auto-populate this form.
+          </p>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <TextInput
+                value={fastDraftText}
+                onChange={(e) => setFastDraftText(e.target.value)}
+                placeholder="e.g. Create a $500 invoice for John Smith for website development, due in seven days"
+                disabled={fastDraftLoading}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleFastDraftExtract();
+                  }
+                }}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={() => void handleFastDraftExtract()}
+              disabled={fastDraftLoading || !fastDraftText.trim()}
+            >
+              {fastDraftLoading ? 'EXTRACTING...' : 'EXTRACT WITH AI →'}
+            </Button>
+          </div>
+
+          {fastDraftClarification && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: '10px 14px',
+                backgroundColor: 'var(--color-overdue-bg)',
+                border: '1px solid var(--color-overdue)',
+                color: 'var(--color-overdue)',
+                fontSize: 13,
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              <strong>Clarification Needed:</strong> {fastDraftClarification}
+            </div>
+          )}
+
+          {fastDraftMatches.length > 0 && (
+            <div style={{ marginTop: 12, padding: 12, backgroundColor: 'var(--color-bg)', border: 'var(--border-hairline)' }}>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 600, marginBottom: 8 }}>
+                Select Customer from Disambiguation List:
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {fastDraftMatches.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      setCustomerId(m.id);
+                      setFastDraftMatches([]);
+                      setFastDraftClarification(null);
+                      setFastDraftSuggestionNotice(`Selected client: ${m.name} (${m.email}). Review pre-filled parameters below.`);
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: 'var(--color-sand)',
+                      border: 'var(--border-hairline)',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontFamily: 'var(--font-body)',
+                    }}
+                  >
+                    → {m.name} ({m.email})
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {fastDraftSuggestionNotice && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: '10px 14px',
+                backgroundColor: 'var(--color-paid-bg)',
+                border: '1px solid var(--color-paid)',
+                color: 'var(--color-paid)',
+                fontSize: 13,
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              {fastDraftSuggestionNotice}
+            </div>
+          )}
+        </div>
+      )}
+
       <form onSubmit={(e) => void handleSubmit(e, false)}>
         {/* Section 1: Customer & Invoice Reference */}
         <div
@@ -413,6 +620,11 @@ export const InvoiceFormView: FC = () => {
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase' }}>
                     Quick Client Entry
                   </div>
+                  {quickCustError && (
+                    <div style={{ marginBottom: 8 }}>
+                      <Alert type="error" message={quickCustError} onDismiss={() => setQuickCustError(null)} />
+                    </div>
+                  )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <TextInput
                       label="Client Name"
