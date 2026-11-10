@@ -1,8 +1,9 @@
 """Dashboard aggregate service.
 
 Reconciles financial receivables metrics authoritatively from database records,
-guarantees per-currency isolation (never mixing currencies), and identifies
-attention-needed items.
+guarantees per-currency isolation (never mixing currencies), identifies
+attention-needed items with customer names enriched, and computes historical
+collections velocity when sufficient data exists.
 """
 
 from collections import defaultdict
@@ -51,6 +52,9 @@ async def get_dashboard_summary(
 
     attention_candidates: List[Invoice] = []
 
+    # Track historical collections for trend calculation
+    monthly_collections: Dict[tuple, Decimal] = defaultdict(lambda: Decimal("0.00"))
+
     for inv in invoices:
         curr = inv.currency.value
         active_currencies.add(curr)
@@ -79,8 +83,11 @@ async def get_dashboard_summary(
             attention_candidates.append(inv)
         elif inv.status == InvoiceStatus.PAID:
             paid_count += 1
-            if inv.paid_at and inv.paid_at.year == current_year and inv.paid_at.month == current_month:
-                collected_month_by_curr[curr] += inv_total
+            if inv.paid_at:
+                if inv.paid_at.year == current_year and inv.paid_at.month == current_month:
+                    collected_month_by_curr[curr] += inv_total
+                period_str = inv.paid_at.strftime("%Y-%m")
+                monthly_collections[(period_str, curr)] += inv_total
 
     # Build currency summary list — strictly separated per currency
     currency_summaries: List[CurrencySummary] = []
@@ -107,15 +114,48 @@ async def get_dashboard_summary(
 
     # Sort attention needed items by due date ascending
     attention_candidates.sort(key=lambda x: str(x.due_date))
-    attention_needed = [InvoiceResponse.model_validate(inv) for inv in attention_candidates[:5]]
 
     # Sort recent invoices by created_at descending
     sorted_recent = sorted(invoices, key=lambda x: x.created_at, reverse=True)
-    recent_invoices = [InvoiceResponse.model_validate(inv) for inv in sorted_recent[:5]]
 
-    # Collections trend is only returned when there is sufficient historical volume
+    # Batch-load customer names for attention and recent items
+    customer_ids = {
+        inv.customer_id
+        for inv in (attention_candidates[:5] + sorted_recent[:5])
+        if inv.customer_id
+    }
+    customer_map: Dict[str, str] = {}
+    if customer_ids:
+        c_cursor = db.customers.find({"id": {"$in": list(customer_ids)}, "user_id": user_id})
+        async for c in c_cursor:
+            customer_map[c.get("id")] = c.get("name")
+
+    attention_needed: List[InvoiceResponse] = []
+    for inv in attention_candidates[:5]:
+        resp = InvoiceResponse.model_validate(inv)
+        resp.customer_name = customer_map.get(inv.customer_id)
+        attention_needed.append(resp)
+
+    recent_invoices: List[InvoiceResponse] = []
+    for inv in sorted_recent[:5]:
+        resp = InvoiceResponse.model_validate(inv)
+        resp.customer_name = customer_map.get(inv.customer_id)
+        recent_invoices.append(resp)
+
+    # Collections trend requires at least 3 distinct periods (months)
+    distinct_periods = {period for (period, _) in monthly_collections.keys()}
+    has_trend_data = len(distinct_periods) >= 3
     collections_trend: List[TrendItem] = []
-    has_trend_data = len(collections_trend) >= 3
+
+    if has_trend_data:
+        for (period, curr) in sorted(monthly_collections.keys()):
+            collections_trend.append(
+                TrendItem(
+                    period=period,
+                    amount=serialize_decimal(monthly_collections[(period, curr)]),
+                    currency=curr,
+                )
+            )
 
     return DashboardSummaryResponse(
         total_invoices=total_invoices,
