@@ -170,7 +170,8 @@ class AIAssistantOrchestrator:
                 inv_num = preview_data.get('invoice_number', 'Draft')
                 cust_name = preview_data.get('customer_name', 'Client')
                 tot_amt = preview_data.get('total', '0.00')
-                curr = preview_data.get('currency', 'USD')
+                curr_raw = preview_data.get('currency', 'USD')
+                curr = curr_raw.value if hasattr(curr_raw, 'value') else str(curr_raw)
                 due_d = preview_data.get('due_date', 'In 14 days')
                 tax_amt = preview_data.get('tax', '0.00')
 

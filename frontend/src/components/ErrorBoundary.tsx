@@ -81,7 +81,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   borderRadius: '2px',
                   padding: '12px',
                   fontSize: '0.75rem',
-                  color: 'var(--status-overdue, #8C4A3F)',
+                  color: 'var(--color-overdue, #8C4A3F)',
                   overflowX: 'auto',
                   marginBottom: '24px',
                 }}

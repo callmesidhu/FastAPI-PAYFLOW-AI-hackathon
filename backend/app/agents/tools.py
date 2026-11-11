@@ -148,6 +148,9 @@ async def tool_create_invoice_draft(
         payload=invoice_payload,
     )
 
+    def _val(v: Any) -> str:
+        return v.value if hasattr(v, "value") else str(v)
+
     return {
         "invoice_id": created.internal_id,
         "invoice_number": created.invoice_number,
@@ -156,10 +159,10 @@ async def tool_create_invoice_draft(
         "subtotal": str(created.subtotal),
         "tax": str(created.tax),
         "total": str(created.total),
-        "currency": created.currency,
+        "currency": _val(created.currency),
         "issue_date": str(created.issue_date),
         "due_date": str(created.due_date),
-        "status": created.status,
+        "status": _val(created.status),
         "message": f"Draft invoice {created.invoice_number} created for {customer_name}.",
     }
 
@@ -185,8 +188,8 @@ async def tool_list_invoices(
             "invoice_number": inv.invoice_number,
             "customer_name": inv.customer_name or "Client",
             "total": str(inv.total),
-            "currency": inv.currency,
-            "status": inv.status,
+            "currency": inv.currency.value if hasattr(inv.currency, "value") else str(inv.currency),
+            "status": inv.status.value if hasattr(inv.status, "value") else str(inv.status),
             "due_date": str(inv.due_date),
             "paypal_invoice_id": inv.paypal_invoice_id,
         }
@@ -222,8 +225,8 @@ async def tool_get_overdue_invoices(
             "invoice_number": inv.invoice_number,
             "customer_name": inv.customer_name or "Client",
             "total": str(inv.total),
-            "currency": inv.currency,
-            "status": inv.status,
+            "currency": inv.currency.value if hasattr(inv.currency, "value") else str(inv.currency),
+            "status": inv.status.value if hasattr(inv.status, "value") else str(inv.status),
             "due_date": str(inv.due_date),
             "days_overdue": (today - inv.due_date).days,
         }
@@ -258,9 +261,9 @@ async def tool_get_invoice_detail(
         "invoice_id": detail.internal_id,
         "invoice_number": detail.invoice_number,
         "customer_name": detail.customer_name,
-        "status": detail.status,
+        "status": detail.status.value if hasattr(detail.status, "value") else str(detail.status),
         "total": str(detail.total),
-        "currency": detail.currency,
+        "currency": detail.currency.value if hasattr(detail.currency, "value") else str(detail.currency),
         "issue_date": str(detail.issue_date),
         "due_date": str(detail.due_date),
         "paypal_invoice_id": detail.paypal_invoice_id,

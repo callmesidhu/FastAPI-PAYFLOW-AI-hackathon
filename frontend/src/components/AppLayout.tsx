@@ -146,7 +146,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
                   }}
                   className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
                 >
-                  <span>{item.label}</span>
+                  <span style={{ color: isActive ? 'var(--color-bg)' : 'inherit' }}>{item.label}</span>
                   {item.badge !== undefined && (
                     <span
                       style={{

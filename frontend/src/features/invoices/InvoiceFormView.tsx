@@ -931,14 +931,14 @@ export const InvoiceFormView: FC = () => {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 14 }}>
                 <span style={{ color: 'var(--color-sand)' }}>Subtotal:</span>
-                <span style={{ fontFamily: 'monospace' }}>
+                <span style={{ fontFamily: 'monospace', color: '#FAF7F2' }}>
                   {previewSubtotal.toFixed(2)} {currency}
                 </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, fontSize: 14 }}>
                 <span style={{ color: 'var(--color-sand)' }}>Tax Total:</span>
-                <span style={{ fontFamily: 'monospace' }}>
+                <span style={{ fontFamily: 'monospace', color: '#FAF7F2' }}>
                   {previewTax.toFixed(2)} {currency}
                 </span>
               </div>

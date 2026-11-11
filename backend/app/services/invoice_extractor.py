@@ -239,8 +239,8 @@ class InvoiceExtractor:
         # 4. Extract Description / Service Name
         description = "Professional Services"
         desc_patterns = [
-            r"for\s+(?:website\s+development|consulting|design|development|workshop|services|audit|retainer|implementation)[a-z0-9_\s]*",
-            r"(?:for|description:|item:)\s+([A-Za-z0-9\s\-_,]+?)(?=\s+(?:due|by|for\s+\$|\$|in\s+\d|with)|$)",
+            r"for\s+((?:website\s+development|consulting|design|development|workshop|services|audit|retainer|implementation)[a-z0-9_\s\-]*?)(?=\s+(?:due|by|for\s+\$|\$|in\s+\d|with)|[,.;!?]|$)",
+            r"(?:for|description:|item:)\s+([A-Za-z0-9\s\-_,]+?)(?=\s+(?:due|by|for\s+\$|\$|in\s+\d|with)|[,.;!?]|$)",
         ]
         for pat in desc_patterns:
             dm = re.search(pat, raw_text, re.IGNORECASE)

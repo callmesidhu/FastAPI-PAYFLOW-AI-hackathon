@@ -71,7 +71,7 @@ export const DashboardView: FC = () => {
             <Button variant="outline" size="sm" onClick={() => navigate('/assistant')}>
               AI ASSISTANT
             </Button>
-            <Button variant="primary" size="sm" onClick={() => navigate('/invoices')}>
+            <Button variant="primary" size="sm" onClick={() => navigate('/invoices/new')}>
               + NEW DRAFT
             </Button>
           </div>
