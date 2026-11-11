@@ -63,9 +63,12 @@ export const AppLayout: FC<AppLayoutProps> = ({
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          position: 'sticky',
+          position: 'fixed',
           top: 0,
+          left: 0,
+          bottom: 0,
           height: '100vh',
+          zIndex: 40,
         }}
         className="payflow-desktop-sidebar"
       >
@@ -199,7 +202,15 @@ export const AppLayout: FC<AppLayoutProps> = ({
       {/* =========================================================================
           MAIN APPLICATION CANVAS
           ========================================================================= */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+        }}
+        className="payflow-main-wrapper"
+      >
         {/* Mobile Top Header (Hidden on Desktop via CSS) */}
         <header
           style={{
@@ -358,9 +369,15 @@ export const AppLayout: FC<AppLayoutProps> = ({
       </div>
 
       <style>{`
+        .payflow-main-wrapper {
+          margin-left: 260px;
+        }
         @media (max-width: 768px) {
           .payflow-desktop-sidebar {
             display: none !important;
+          }
+          .payflow-main-wrapper {
+            margin-left: 0 !important;
           }
           .payflow-mobile-header {
             display: flex !important;
