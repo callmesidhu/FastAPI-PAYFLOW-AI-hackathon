@@ -33,7 +33,6 @@ export const AppLayout: FC<AppLayoutProps> = ({
   onNavigate,
   userEmail,
   onLogout,
-  brandSubtitle = 'ACCOUNTS RECEIVABLE AGENT',
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -72,46 +71,24 @@ export const AppLayout: FC<AppLayoutProps> = ({
           {/* Brand Wordmark Header */}
           <div
             style={{
-              padding: '28px 24px 20px',
+              padding: '24px 20px 18px',
               borderBottom: 'var(--border-hairline)',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
+              justifyContent: 'center',
             }}
           >
             <img
               src="/logo.png"
-              alt="PAYFLOW Logo"
-              style={{ width: '32px', height: '32px', objectFit: 'contain' }}
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
+              alt="PAYFLOW AI"
+              style={{
+                width: '100%',
+                maxWidth: '200px',
+                height: 'auto',
+                objectFit: 'contain',
+                display: 'block',
               }}
             />
-            <div>
-              <div
-                style={{
-                  fontFamily: 'var(--font-serif)',
-                  fontSize: '1.2rem',
-                  letterSpacing: 'var(--tracking-wide)',
-                  fontWeight: 700,
-                  color: 'var(--color-ink)',
-                  lineHeight: 1.1,
-                }}
-              >
-                PAYFLOW AI
-              </div>
-              <div
-                style={{
-                  fontSize: '0.625rem',
-                  letterSpacing: 'var(--tracking-widest)',
-                  textTransform: 'uppercase',
-                  color: 'var(--color-muted)',
-                  marginTop: '2px',
-                }}
-              >
-                {brandSubtitle}
-              </div>
-            </div>
           </div>
 
           {/* Navigation Links */}
@@ -222,44 +199,32 @@ export const AppLayout: FC<AppLayoutProps> = ({
           style={{
             borderBottom: 'var(--border-hairline)',
             backgroundColor: 'var(--color-sand)',
-            padding: '12px 20px',
+            padding: '10px 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
           className="payflow-mobile-header"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <img
-              src="/logo-mark.png"
-              alt="Logo"
-              style={{ width: '22px', height: '22px', objectFit: 'contain' }}
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
-            <span
-              style={{
-                fontFamily: 'var(--font-serif)',
-                fontWeight: 700,
-                fontSize: '1rem',
-                letterSpacing: 'var(--tracking-wide)',
-              }}
-            >
-              PAYFLOW AI
-            </span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="PAYFLOW AI"
+            style={{ height: '36px', width: 'auto', objectFit: 'contain' }}
+          />
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle navigation menu"
             style={{
-              padding: '6px 10px',
+              padding: '6px 12px',
               backgroundColor: 'var(--color-ink)',
               color: 'var(--color-bg)',
               border: 'none',
+              borderRadius: 'var(--radius-sm)',
               fontSize: '0.7rem',
               letterSpacing: 'var(--tracking-wider)',
+              fontWeight: 600,
+              cursor: 'pointer',
             }}
           >
             {mobileMenuOpen ? 'CLOSE' : 'MENU'}

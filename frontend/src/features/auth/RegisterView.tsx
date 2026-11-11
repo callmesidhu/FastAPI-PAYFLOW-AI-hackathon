@@ -59,40 +59,20 @@ export const RegisterView: FC = () => {
           boxShadow: 'var(--shadow-card)',
         }}
       >
-        {/* Wordmark Header */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        {/* Brand Hero Logo with Full Lockup */}
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <img
             src="/logo.png"
-            alt="PAYFLOW Logo"
-            style={{ width: '48px', height: '48px', objectFit: 'contain', marginBottom: '16px' }}
-            onError={(e) => {
-              (e.target as HTMLElement).style.display = 'none';
+            alt="PAYFLOW AI — Your AI Accounts Receivable Agent"
+            style={{
+              width: '100%',
+              maxWidth: '320px',
+              height: 'auto',
+              objectFit: 'contain',
+              display: 'block',
+              margin: '0 auto',
             }}
           />
-          <h1
-            style={{
-              fontFamily: 'var(--font-serif)',
-              fontSize: '1.75rem',
-              letterSpacing: 'var(--tracking-wide)',
-              fontWeight: 700,
-              color: 'var(--color-ink)',
-              margin: 0,
-            }}
-          >
-            PAYFLOW AI
-          </h1>
-          <div
-            style={{
-              fontSize: '0.675rem',
-              letterSpacing: 'var(--tracking-wider)',
-              textTransform: 'uppercase',
-              color: 'var(--color-muted)',
-              marginTop: '6px',
-              fontWeight: 500,
-            }}
-          >
-            Create Business Owner Account
-          </div>
         </div>
 
         {error && (
