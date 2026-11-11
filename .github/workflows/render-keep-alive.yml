@@ -1,0 +1,24 @@
+name: Keep Render Backend Alive
+
+on:
+  schedule:
+    # Runs every 10 minutes (UTC)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  ping-render:
+    name: Ping Render Health Endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          echo "Pinging https://fastapi-payflow-ai-hackathon.onrender.com/health ..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" https://fastapi-payflow-ai-hackathon.onrender.com/health)
+          echo "$RESPONSE"
+          STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+          if [ "$STATUS" -eq 200 ]; then
+            echo "Render backend is awake and healthy!"
+          else
+            echo "Unexpected HTTP status: $STATUS"
+          fi
