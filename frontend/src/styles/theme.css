@@ -115,7 +115,6 @@ a {
 }
 
 button:focus-visible,
-input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
@@ -126,17 +125,30 @@ textarea:focus-visible,
 /* Input styling */
 .payflow-input {
   box-shadow: var(--shadow-input);
-  transition: all var(--transition-fast) !important;
+  outline: none !important;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
 }
 
 .payflow-input:hover:not(:disabled) {
   border-color: rgba(58, 52, 44, 0.45) !important;
 }
 
-.payflow-input:focus {
+.payflow-input:focus,
+.payflow-input:focus-visible {
+  outline: none !important;
   border-color: var(--color-ink) !important;
   box-shadow: var(--shadow-input-focus) !important;
   background-color: #FFFFFF !important;
+}
+
+/* Chrome/Browser autofill override to preserve styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+  -webkit-text-fill-color: var(--color-ink) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Nav item hover */
