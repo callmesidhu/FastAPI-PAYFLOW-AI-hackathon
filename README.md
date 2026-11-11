@@ -144,34 +144,6 @@ Built with pride for the **PayPal AI Hackathon**:
 
 ---
 
-### Quick Start with Docker & Docker Compose (Recommended)
-
-Run the entire PAYFLOW AI stack (MongoDB 7.0, FastAPI Python 3.11 backend, and Nginx-powered React SPA frontend) with one command:
-
-```bash
-# Clone the repository
-git clone https://github.com/gayurajeev/FastAPI-PAYFLOW-AI-hackathon.git
-cd FastAPI-PAYFLOW-AI-hackathon
-
-# Build and start the entire multi-container stack in the background
-docker compose up -d
-
-# Check container health status
-docker compose ps
-
-# Run the comprehensive 7-phase Docker test suite (health, proxy, 156 pytest tests, seeding, smoke test)
-./scripts/docker_test.sh
-```
-
-**Service Endpoints:**
-- **Web Application**: `http://localhost:3000` (Production React SPA served via Nginx with automated API reverse proxy)
-- **FastAPI Backend**: `http://localhost:8000`
-- **Interactive OpenAPI (Swagger)**: `http://localhost:8000/docs`
-- **System Health Diagnostic**: `http://localhost:8000/health` (also proxied via `http://localhost:3000/health`)
-- **MongoDB Database**: `localhost:27017`
-
----
-
 ### Setup on macOS / Linux (Bash or Zsh)
 
 #### 1. Backend Setup

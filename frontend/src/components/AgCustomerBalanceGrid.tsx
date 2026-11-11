@@ -84,8 +84,8 @@ export const AgCustomerBalanceGrid: FC<AgCustomerBalanceGridProps> = ({ rowData 
         sortable: true,
         width: 140,
         type: 'rightAligned',
-        valueGetter: (params) => parseFloat(params.data?.outstanding_amount || '0'),
-        valueFormatter: (params) => {
+        valueGetter: (params: any) => parseFloat(params.data?.outstanding_amount || '0'),
+        valueFormatter: (params: any) => {
           if (params.value === undefined || params.value === null) return '';
           return `$${Number(params.value).toFixed(2)}`;
         },
@@ -98,7 +98,7 @@ export const AgCustomerBalanceGrid: FC<AgCustomerBalanceGridProps> = ({ rowData 
         sortable: true,
         width: 150,
         type: 'rightAligned',
-        valueGetter: (params) => parseFloat(params.data?.overdue_amount || '0'),
+        valueGetter: (params: any) => parseFloat(params.data?.overdue_amount || '0'),
         cellRenderer: (params: any) => {
           const val = parseFloat(params.data?.overdue_amount || '0');
           if (val <= 0) {

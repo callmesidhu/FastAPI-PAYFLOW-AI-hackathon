@@ -105,7 +105,7 @@ export const AgInvoiceGrid: FC<AgInvoiceGridProps> = ({
         sortable: true,
         flex: 1,
         minWidth: 180,
-        valueGetter: (params) => params.data?.customer_name || 'Customer',
+        valueGetter: (params: any) => params.data?.customer_name || 'Customer',
         cellRenderer: (params: any) => {
           const row = params.data as AgInvoiceRow;
           if (!row) return null;
@@ -128,8 +128,8 @@ export const AgInvoiceGrid: FC<AgInvoiceGridProps> = ({
         sortable: true,
         width: 140,
         type: 'rightAligned',
-        valueGetter: (params) => parseFloat(params.data?.total || '0'),
-        valueFormatter: (params) => {
+        valueGetter: (params: any) => parseFloat(params.data?.total || '0'),
+        valueFormatter: (params: any) => {
           if (params.value === undefined || params.value === null) return '';
           return `$${Number(params.value).toFixed(2)} ${params.data?.currency || 'USD'}`;
         },

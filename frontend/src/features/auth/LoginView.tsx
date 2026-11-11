@@ -44,41 +44,51 @@ export const LoginView: FC = () => {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: 'var(--color-bg)',
+        background: 'radial-gradient(ellipse at top, #F1F5F9 0%, #E2E8F0 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
+        fontFamily: 'var(--font-sans)',
       }}
     >
       <div
         style={{
           width: '100%',
           maxWidth: '440px',
-          backgroundColor: 'var(--color-cream)',
-          border: 'var(--border-hairline)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '40px 32px',
-          boxShadow: 'var(--shadow-subtle)',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid #E2E8F0',
+          borderRadius: '16px',
+          padding: '44px 36px',
+          boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
         }}
       >
         {/* Wordmark Header */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <img
-            src="/logo.png"
-            alt="PAYFLOW Logo"
-            style={{ width: '36px', height: '36px', objectFit: 'contain', marginBottom: '12px' }}
-            onError={(e) => {
-              (e.target as HTMLElement).style.display = 'none';
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              margin: '0 auto 16px auto',
+              backgroundColor: '#0F172A',
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
             }}
-          />
+          >
+            <span style={{ color: '#FFFFFF', fontSize: '1.4rem', fontWeight: 700, fontFamily: 'var(--font-sans)' }}>
+              P
+            </span>
+          </div>
           <h1
             style={{
-              fontFamily: 'var(--font-serif)',
-              fontSize: '1.6rem',
-              letterSpacing: 'var(--tracking-wide)',
-              fontWeight: 700,
-              color: 'var(--color-ink)',
+              fontFamily: 'var(--font-sans)',
+              fontSize: '1.75rem',
+              letterSpacing: '-0.025em',
+              fontWeight: 800,
+              color: '#0F172A',
               margin: 0,
             }}
           >
@@ -86,14 +96,15 @@ export const LoginView: FC = () => {
           </h1>
           <div
             style={{
-              fontSize: '0.65rem',
-              letterSpacing: 'var(--tracking-widest)',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              letterSpacing: '0.04em',
               textTransform: 'uppercase',
-              color: 'var(--color-muted)',
-              marginTop: '4px',
+              color: '#64748B',
+              marginTop: '6px',
             }}
           >
-            ACCOUNTS RECEIVABLE AGENT • SIGN IN
+            Autonomous Accounts Receivable Agent
           </div>
         </div>
 
@@ -129,58 +140,67 @@ export const LoginView: FC = () => {
             variant="primary"
             size="md"
             isLoading={isSubmitting}
-            style={{ width: '100%', marginTop: '8px' }}
+            style={{
+              width: '100%',
+              marginTop: '12px',
+              padding: '12px',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              letterSpacing: '0.02em',
+              backgroundColor: '#0F172A',
+            }}
           >
-            AUTHENTICATE →
+            Sign In to Dashboard →
           </Button>
         </form>
 
         {/* Demo Fast-fill Band */}
         <div
           style={{
-            marginTop: '24px',
-            paddingTop: '16px',
-            borderTop: '1px solid rgba(58, 52, 44, 0.2)',
+            marginTop: '28px',
+            paddingTop: '20px',
+            borderTop: '1px solid #E2E8F0',
             display: 'flex',
             flexDirection: 'column',
-            gap: '8px',
+            gap: '10px',
           }}
         >
           <button
             type="button"
             onClick={handleFillDemo}
             style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--color-muted)',
-              fontSize: '0.7rem',
-              letterSpacing: 'var(--tracking-wide)',
-              textTransform: 'uppercase',
+              backgroundColor: '#F8FAFC',
+              border: '1px solid #CBD5E1',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              color: '#334155',
+              fontSize: '0.75rem',
               fontWeight: 600,
               cursor: 'pointer',
               textAlign: 'center',
+              transition: 'all 0.15s ease',
             }}
           >
-            [ Fill Local Demo Credentials ]
+            ⚡ Auto-Fill Demo Credentials
           </button>
-          <span style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textAlign: 'center', lineHeight: 1.4 }}>
-            Demo credentials are separate from PayPal Sandbox accounts.
+          <span style={{ fontSize: '0.7rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.4 }}>
+            Pre-configured with sample receivables data & audit trail
           </span>
         </div>
 
         {/* Registration Link */}
-        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-muted)' }}>
+        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.85rem', color: '#64748B' }}>
           Don't have an account?{' '}
           <Link
             to="/register"
             style={{
               fontWeight: 600,
-              color: 'var(--color-ink)',
-              textDecoration: 'underline',
-              letterSpacing: '0.02em',
+              color: '#0F172A',
+              textDecoration: 'none',
             }}
           >
-            Register Business
+            Create an Account
           </Link>
         </div>
       </div>

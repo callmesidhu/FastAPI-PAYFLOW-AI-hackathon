@@ -80,9 +80,9 @@ export const AppLayout: FC<AppLayoutProps> = ({
             }}
           >
             <img
-              src="/logo.png"
+              src="/logo-mark.png"
               alt="PAYFLOW Logo"
-              style={{ width: '28px', height: '28px', objectFit: 'contain' }}
+              style={{ width: '32px', height: '32px', objectFit: 'contain' }}
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
