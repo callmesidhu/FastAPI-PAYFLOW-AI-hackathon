@@ -58,7 +58,7 @@ export const LandingPage: FC = () => {
         backgroundColor: 'var(--color-bg)',
         color: 'var(--color-ink)',
         fontFamily: 'var(--font-sans)',
-        overflowX: 'hidden',
+        overflowX: 'clip',
       }}
     >
       {/* =========================================================================
@@ -485,6 +485,8 @@ export const LandingPage: FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '8px',
               padding: '8px 12px',
               borderBottom: '1px solid var(--color-hairline)',
               backgroundColor: 'var(--color-sand)',
@@ -580,7 +582,7 @@ export const LandingPage: FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
               gap: '24px',
             }}
           >
@@ -711,7 +713,7 @@ export const LandingPage: FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
             gap: '32px',
             marginBottom: '72px',
           }}
@@ -900,7 +902,7 @@ export const LandingPage: FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
               gap: '28px',
             }}
           >
@@ -1057,7 +1059,7 @@ export const LandingPage: FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))',
             gap: '24px',
           }}
         >
@@ -1176,7 +1178,7 @@ export const LandingPage: FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
               gap: '32px',
             }}
           >
@@ -1299,15 +1301,16 @@ export const LandingPage: FC = () => {
 
         {/* Split Screen AI Interface */}
         <div
+          className="landing-split-card"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
             gap: '32px',
             alignItems: 'center',
             backgroundColor: '#FFFFFF',
             border: '1px solid var(--color-hairline)',
             borderRadius: 'var(--radius-md)',
-            padding: '36px',
+            padding: 'clamp(20px, 4vw, 36px)',
             boxShadow: 'var(--shadow-card)',
           }}
         >
@@ -1436,7 +1439,7 @@ export const LandingPage: FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
               gap: '24px',
             }}
           >
@@ -1524,7 +1527,7 @@ export const LandingPage: FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))',
             gap: '24px',
           }}
         >
@@ -1868,6 +1871,9 @@ export const LandingPage: FC = () => {
       </footer>
 
       <style>{`
+        #product, #features, #how-it-works, #who-its-for, #faq {
+          scroll-margin-top: 76px;
+        }
         @media (min-width: 860px) {
           .landing-desktop-nav {
             display: flex !important;

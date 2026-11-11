@@ -52,27 +52,29 @@ export const LoginView: FC = () => {
           backgroundColor: '#FFFFFF',
           border: '1px solid var(--color-hairline)',
           borderRadius: 'var(--radius-md)',
-          padding: '44px 36px 36px',
+          padding: 'clamp(24px, 5vw, 44px) clamp(20px, 5vw, 36px) clamp(24px, 5vw, 36px)',
           boxShadow: 'var(--shadow-card)',
         }}
       >
         {/* Brand Hero Logo with Full Lockup */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <img
-            src="/logo.png"
-            alt="PAYFLOW AI — Your AI Accounts Receivable Agent"
-            style={{
-              width: '100%',
-              maxWidth: '320px',
-              height: 'auto',
-              objectFit: 'contain',
-              display: 'block',
-              margin: '0 auto',
-              border: '1px solid var(--color-hairline)',
-              borderRadius: 'var(--radius-sm)',
-              boxShadow: '0 1px 3px rgba(11, 11, 11, 0.04)',
-            }}
-          />
+          <Link to="/" aria-label="PAYFLOW AI Home" style={{ display: 'inline-block' }}>
+            <img
+              src="/logo.png"
+              alt="PAYFLOW AI — Your AI Accounts Receivable Agent"
+              style={{
+                width: '100%',
+                maxWidth: '320px',
+                height: 'auto',
+                objectFit: 'contain',
+                display: 'block',
+                margin: '0 auto',
+                border: '1px solid var(--color-hairline)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: '0 1px 3px rgba(11, 11, 11, 0.04)',
+              }}
+            />
+          </Link>
         </div>
 
         {error && (
