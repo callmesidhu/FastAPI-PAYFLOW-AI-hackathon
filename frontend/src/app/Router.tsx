@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from
 import { AppLayout } from '../components/AppLayout';
 import { LoginView } from '../features/auth/LoginView';
 import { RegisterView } from '../features/auth/RegisterView';
+import { LandingPage } from '../features/landing/LandingPage';
 import { DashboardView } from '../features/dashboard/DashboardView';
 import { AssistantView } from '../features/assistant/AssistantView';
 import { InvoicesView } from '../features/invoices/InvoicesView';
@@ -41,20 +42,15 @@ export const AppRouter: FC = () => {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Public Landing & Marketing */}
+          <Route path="/" element={<LandingPage />} />
+
           {/* Public Authentication Screens */}
           <Route path="/login" element={<LoginView />} />
           <Route path="/register" element={<RegisterView />} />
 
           {/* Protected Business Operating Screens */}
           <Route element={<ProtectedRoute />}>
-            <Route
-              path="/"
-              element={
-                <AuthenticatedLayoutWrapper>
-                  <Navigate to="/dashboard" replace />
-                </AuthenticatedLayoutWrapper>
-              }
-            />
             <Route
               path="/dashboard"
               element={
