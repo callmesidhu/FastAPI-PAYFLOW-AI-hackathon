@@ -124,6 +124,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
               return (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => handleNavClick(item.id)}
                   style={{
                     display: 'flex',
@@ -132,27 +133,28 @@ export const AppLayout: FC<AppLayoutProps> = ({
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: 'var(--radius-sm)',
-                    border: isActive ? '1px solid var(--color-ink)' : '1px solid transparent',
-                    backgroundColor: isActive ? 'var(--color-ink)' : 'transparent',
-                    color: isActive ? 'var(--color-bg)' : 'var(--color-ink)',
+                    border: isActive ? '1px solid var(--color-hairline)' : '1px solid transparent',
+                    borderLeft: isActive ? '3px solid var(--color-ink)' : '3px solid transparent',
+                    backgroundColor: 'transparent',
+                    color: 'var(--color-ink)',
                     fontFamily: 'var(--font-sans)',
                     fontSize: '0.75rem',
                     letterSpacing: 'var(--tracking-wide)',
                     textTransform: 'uppercase',
-                    fontWeight: 600,
+                    fontWeight: isActive ? 700 : 600,
                     textAlign: 'left',
                     cursor: 'pointer',
                     transition: 'all var(--transition-fast)',
                   }}
                   className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
                 >
-                  <span style={{ color: isActive ? 'var(--color-bg)' : 'inherit' }}>{item.label}</span>
+                  <span style={{ color: 'var(--color-ink)' }}>{item.label}</span>
                   {item.badge !== undefined && (
                     <span
                       style={{
                         fontSize: '0.65rem',
                         padding: '2px 6px',
-                        backgroundColor: isActive ? 'var(--color-sand)' : 'var(--color-cream)',
+                        backgroundColor: 'var(--color-cream)',
                         color: 'var(--color-ink)',
                         borderRadius: 'var(--radius-sm)',
                       }}
@@ -279,25 +281,33 @@ export const AppLayout: FC<AppLayoutProps> = ({
             }}
             className="payflow-mobile-nav"
           >
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                style={{
-                  padding: '10px 14px',
-                  backgroundColor: activeNavId === item.id ? 'var(--color-ink)' : 'transparent',
-                  color: activeNavId === item.id ? 'var(--color-bg)' : 'var(--color-ink)',
-                  border: 'var(--border-hairline)',
-                  textAlign: 'left',
-                  textTransform: 'uppercase',
-                  fontSize: '0.75rem',
-                  letterSpacing: 'var(--tracking-wide)',
-                  fontWeight: 600,
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
+            {NAV_ITEMS.map((item) => {
+              const isActive = activeNavId === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleNavClick(item.id)}
+                  className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
+                  style={{
+                    padding: '10px 14px',
+                    backgroundColor: 'transparent',
+                    color: 'var(--color-ink)',
+                    border: isActive ? '1px solid var(--color-hairline)' : '1px solid transparent',
+                    borderLeft: isActive ? '3px solid var(--color-ink)' : '3px solid transparent',
+                    borderRadius: 'var(--radius-sm)',
+                    textAlign: 'left',
+                    textTransform: 'uppercase',
+                    fontSize: '0.75rem',
+                    letterSpacing: 'var(--tracking-wide)',
+                    fontWeight: isActive ? 700 : 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ color: 'var(--color-ink)' }}>{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
         )}
 

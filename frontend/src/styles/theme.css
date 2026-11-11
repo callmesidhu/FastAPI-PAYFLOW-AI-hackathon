@@ -112,15 +112,28 @@ p, span, li, td, th {
   }
 }
 
-.nav-item:hover:not(.nav-item-active) {
-  background-color: var(--color-cream) !important;
+.nav-item {
+  background-color: transparent !important;
+  color: var(--color-ink) !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.nav-item:hover,
+.nav-item:active {
+  background-color: rgba(250, 247, 242, 0.45) !important;
   color: var(--color-ink) !important;
 }
 
 .nav-item-active,
-.nav-item-active:hover {
-  background-color: var(--color-ink) !important;
-  color: var(--color-bg) !important;
+.nav-item-active:hover,
+.nav-item-active:active {
+  background-color: transparent !important;
+  color: var(--color-ink) !important;
+}
+
+.nav-item span {
+  color: var(--color-ink) !important;
 }
 
 /* Interactive Elements & Accessible Focus Rings */
