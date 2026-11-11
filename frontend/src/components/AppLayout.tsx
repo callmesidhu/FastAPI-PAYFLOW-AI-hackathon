@@ -193,6 +193,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
           {onLogout && (
             <button
               onClick={onLogout}
+              className="sign-out-btn"
               style={{
                 background: 'none',
                 border: 'none',
@@ -230,7 +231,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <img
-              src="/logo.png"
+              src="/logo-mark.png"
               alt="Logo"
               style={{ width: '22px', height: '22px', objectFit: 'contain' }}
               onError={(e) => {

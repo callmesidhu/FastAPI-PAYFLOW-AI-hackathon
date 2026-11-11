@@ -44,51 +44,41 @@ export const LoginView: FC = () => {
     <div
       style={{
         minHeight: '100vh',
-        background: 'radial-gradient(ellipse at top, #F1F5F9 0%, #E2E8F0 100%)',
+        backgroundColor: 'var(--color-bg)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
-        fontFamily: 'var(--font-sans)',
       }}
     >
       <div
         style={{
           width: '100%',
           maxWidth: '440px',
-          backgroundColor: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: '16px',
-          padding: '44px 36px',
-          boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
+          backgroundColor: 'var(--color-cream)',
+          border: 'var(--border-hairline)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '48px 36px 40px',
+          boxShadow: 'var(--shadow-card)',
         }}
       >
         {/* Wordmark Header */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              margin: '0 auto 16px auto',
-              backgroundColor: '#0F172A',
-              borderRadius: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
+        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+          <img
+            src="/logo-mark.png"
+            alt="PAYFLOW Logo Mark"
+            style={{ width: '52px', height: '52px', objectFit: 'contain', marginBottom: '20px' }}
+            onError={(e) => {
+              (e.target as HTMLElement).style.display = 'none';
             }}
-          >
-            <span style={{ color: '#FFFFFF', fontSize: '1.4rem', fontWeight: 700, fontFamily: 'var(--font-sans)' }}>
-              P
-            </span>
-          </div>
+          />
           <h1
             style={{
-              fontFamily: 'var(--font-sans)',
+              fontFamily: 'var(--font-serif)',
               fontSize: '1.75rem',
-              letterSpacing: '-0.025em',
-              fontWeight: 800,
-              color: '#0F172A',
+              letterSpacing: 'var(--tracking-wide)',
+              fontWeight: 700,
+              color: 'var(--color-ink)',
               margin: 0,
             }}
           >
@@ -96,15 +86,14 @@ export const LoginView: FC = () => {
           </h1>
           <div
             style={{
-              fontSize: '0.75rem',
-              fontWeight: 500,
-              letterSpacing: '0.04em',
+              fontSize: '0.65rem',
+              letterSpacing: 'var(--tracking-widest)',
               textTransform: 'uppercase',
-              color: '#64748B',
+              color: 'var(--color-muted)',
               marginTop: '6px',
             }}
           >
-            Autonomous Accounts Receivable Agent
+            ACCOUNTS RECEIVABLE AGENT • SIGN IN
           </div>
         </div>
 
@@ -114,7 +103,7 @@ export const LoginView: FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <TextInput
             label="Business Email"
             type="email"
@@ -138,20 +127,11 @@ export const LoginView: FC = () => {
           <Button
             type="submit"
             variant="primary"
-            size="md"
+            size="lg"
             isLoading={isSubmitting}
-            style={{
-              width: '100%',
-              marginTop: '12px',
-              padding: '12px',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              letterSpacing: '0.02em',
-              backgroundColor: '#0F172A',
-            }}
+            style={{ width: '100%', marginTop: '4px' }}
           >
-            Sign In to Dashboard →
+            AUTHENTICATE →
           </Button>
         </form>
 
@@ -160,47 +140,52 @@ export const LoginView: FC = () => {
           style={{
             marginTop: '28px',
             paddingTop: '20px',
-            borderTop: '1px solid #E2E8F0',
+            borderTop: 'var(--border-subtle)',
             display: 'flex',
             flexDirection: 'column',
+            alignItems: 'center',
             gap: '10px',
           }}
         >
           <button
             type="button"
             onClick={handleFillDemo}
+            className="demo-fill-btn"
             style={{
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #CBD5E1',
-              borderRadius: '8px',
-              padding: '10px 14px',
-              color: '#334155',
-              fontSize: '0.75rem',
+              background: 'none',
+              border: 'var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '10px 20px',
+              color: 'var(--color-muted)',
+              fontSize: '0.7rem',
+              letterSpacing: 'var(--tracking-wide)',
+              textTransform: 'uppercase',
               fontWeight: 600,
               cursor: 'pointer',
-              textAlign: 'center',
-              transition: 'all 0.15s ease',
+              transition: 'all var(--transition-fast)',
             }}
           >
-            ⚡ Auto-Fill Demo Credentials
+            ⚡ Fill Demo Credentials
           </button>
-          <span style={{ fontSize: '0.7rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.4 }}>
-            Pre-configured with sample receivables data & audit trail
+          <span style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textAlign: 'center', lineHeight: 1.4 }}>
+            Demo credentials are separate from PayPal Sandbox accounts.
           </span>
         </div>
 
         {/* Registration Link */}
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.85rem', color: '#64748B' }}>
+        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-muted)' }}>
           Don't have an account?{' '}
           <Link
             to="/register"
+            className="auth-link"
             style={{
               fontWeight: 600,
-              color: '#0F172A',
+              color: 'var(--color-ink)',
               textDecoration: 'none',
+              letterSpacing: '0.02em',
             }}
           >
-            Create an Account
+            Register Business
           </Link>
         </div>
       </div>

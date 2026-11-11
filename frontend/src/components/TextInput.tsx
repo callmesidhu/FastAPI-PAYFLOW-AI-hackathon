@@ -13,7 +13,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
         {label && (
           <label
             htmlFor={inputId}
@@ -51,16 +51,15 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
             disabled={disabled}
             style={{
               width: '100%',
-              backgroundColor: disabled ? '#F1F5F9' : '#FFFFFF',
-              border: error ? '1px solid #EF4444' : '1px solid #CBD5E1',
-              borderRadius: '8px',
-              padding: leftIcon ? '11px 14px 11px 38px' : rightIcon ? '11px 38px 11px 14px' : '11px 14px',
+              backgroundColor: disabled ? 'var(--color-cream)' : 'var(--color-white)',
+              border: error ? '1px solid var(--color-overdue)' : 'var(--border-hairline)',
+              borderRadius: 'var(--radius-sm)',
+              padding: leftIcon ? '12px 14px 12px 38px' : rightIcon ? '12px 38px 12px 14px' : '12px 14px',
               fontFamily: 'var(--font-sans)',
-              fontSize: '0.875rem',
-              color: '#0F172A',
+              fontSize: '0.85rem',
+              color: 'var(--color-ink)',
               outline: 'none',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-              transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+              transition: 'border-color var(--transition-fast)',
               ...style,
             }}
             className={`payflow-input ${className}`}
