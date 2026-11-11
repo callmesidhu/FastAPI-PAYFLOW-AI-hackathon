@@ -67,7 +67,7 @@ export const DashboardView: FC = () => {
         title="Receivables Dashboard"
         subtitle="Real-time accounts receivable overview. Monetary totals reconcile authoritatively with backend records."
         actions={
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Button variant="outline" size="sm" onClick={() => navigate('/assistant')}>
               AI ASSISTANT
             </Button>
@@ -169,7 +169,7 @@ export const DashboardView: FC = () => {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
                 gap: '16px',
               }}
             >
@@ -216,7 +216,7 @@ export const DashboardView: FC = () => {
                     </span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: '16px' }}>
                     <div>
                       <div style={{ fontSize: '0.625rem', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-muted)', textTransform: 'uppercase' }}>
                         OUTSTANDING
@@ -297,7 +297,7 @@ export const DashboardView: FC = () => {
                 >
                   Portfolio Volume
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.8rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: '12px', fontSize: '0.8rem' }}>
                   <div>
                     <span style={{ color: 'var(--color-muted)' }}>Total Invoices:</span>{' '}
                     <strong>{data.total_invoices}</strong>
@@ -395,7 +395,7 @@ export const DashboardView: FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
               gap: '24px',
             }}
           >

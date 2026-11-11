@@ -195,8 +195,8 @@ export const CustomersView: FC = () => {
       )}
 
       {/* Search Bar */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
           <TextInput
             placeholder="Search customers by name, company, or email..."
             value={search}
@@ -273,6 +273,7 @@ export const CustomersView: FC = () => {
           }}
         >
           <div
+            className="payflow-modal-card"
             style={{
               width: '100%',
               maxWidth: '560px',
@@ -371,7 +372,7 @@ export const CustomersView: FC = () => {
                   placeholder="100 Tech Blvd"
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '12px' }}>
                   <TextInput
                     label="City"
                     value={formCity}
@@ -386,7 +387,7 @@ export const CustomersView: FC = () => {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '12px' }}>
                   <TextInput
                     label="Postal / ZIP Code"
                     value={formPostal}
@@ -411,7 +412,7 @@ export const CustomersView: FC = () => {
                 rows={2}
               />
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
                 <Button
                   type="button"
                   variant="outline"
@@ -452,9 +453,12 @@ export const CustomersView: FC = () => {
           }}
         >
           <div
+            className="payflow-modal-card"
             style={{
               width: '100%',
               maxWidth: '520px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
               backgroundColor: 'var(--color-bg)',
               border: 'var(--border-hairline)',
               borderRadius: 'var(--radius-sm)',
@@ -530,7 +534,7 @@ export const CustomersView: FC = () => {
               )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <Button
                 variant="danger"
                 size="sm"

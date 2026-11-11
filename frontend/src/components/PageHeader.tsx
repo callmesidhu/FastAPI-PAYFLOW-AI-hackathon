@@ -46,7 +46,7 @@ export const PageHeader: FC<PageHeaderProps> = ({ title, eyebrow, subtitle, acti
           <h1
             style={{
               fontFamily: 'var(--font-serif)',
-              fontSize: '2rem',
+              fontSize: 'clamp(1.35rem, 4vw, 2rem)',
               letterSpacing: 'var(--tracking-wide)',
               fontWeight: 600,
               color: 'var(--color-ink)',
@@ -70,7 +70,7 @@ export const PageHeader: FC<PageHeaderProps> = ({ title, eyebrow, subtitle, acti
         </div>
 
         {actions && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {actions}
           </div>
         )}

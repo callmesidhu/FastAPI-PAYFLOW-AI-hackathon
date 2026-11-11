@@ -212,7 +212,7 @@ export const InvoiceDetailView: FC = () => {
         title={invoice.invoice_number}
         subtitle={`Issued on ${invoice.issue_date} • Payment due ${invoice.due_date}`}
         actions={
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <Button variant="outline" size="sm" onClick={() => navigate('/invoices')}>
               ← Invoices
             </Button>
@@ -297,7 +297,7 @@ export const InvoiceDetailView: FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
           gap: 20,
           marginBottom: 32,
         }}
@@ -595,7 +595,7 @@ export const InvoiceDetailView: FC = () => {
             paddingTop: 16,
           }}
         >
-          <div style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+          <div style={{ width: '100%', maxWidth: 280, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--color-muted)' }}>Subtotal:</span>
               <span style={{ fontFamily: 'monospace' }}>
@@ -631,7 +631,7 @@ export const InvoiceDetailView: FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
           gap: 24,
         }}
       >
@@ -922,7 +922,7 @@ export const InvoiceDetailView: FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 12, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 12, fontSize: 12, marginBottom: 16 }}>
               <div>
                 <div style={{ color: 'var(--color-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Customer Recipient</div>
                 <div style={{ fontWeight: 600, marginTop: 2 }}>{invoice.customer_name || 'Customer'}</div>

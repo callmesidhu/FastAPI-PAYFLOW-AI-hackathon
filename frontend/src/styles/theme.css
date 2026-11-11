@@ -85,6 +85,7 @@ body {
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -169,5 +170,69 @@ textarea:focus-visible,
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Responsive Multi-View Helpers */
+.payflow-main-content > * {
+  min-width: 0;
+}
+
+.payflow-line-item-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.payflow-tabs-scroll {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 768px) {
+  .payflow-line-item-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .payflow-line-item-grid > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .payflow-line-item-total {
+    grid-column: 1 / -1;
+    padding-top: 8px !important;
+    text-align: left !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: var(--border-subtle);
+  }
+
+  .payflow-chat-shell {
+    min-height: 360px !important;
+    max-height: none !important;
+  }
+
+  .payflow-chat-messages {
+    padding: 14px !important;
+    gap: 14px !important;
+  }
+
+  .payflow-chat-form {
+    padding: 12px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .payflow-chat-bubble {
+    max-width: 96% !important;
+  }
+
+  .payflow-modal-card {
+    padding: 20px !important;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 }

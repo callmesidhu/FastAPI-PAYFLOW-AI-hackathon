@@ -161,7 +161,7 @@ export const InvoicesView: FC = () => {
           border: 'var(--border-hairline)',
         }}
       >
-        <div style={{ flex: 1, minWidth: 240 }}>
+        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
           <TextInput
             label="SEARCH INVOICES"
             placeholder="Search by invoice #, customer name, notes..."
@@ -173,7 +173,7 @@ export const InvoicesView: FC = () => {
           />
         </div>
 
-        <div style={{ width: 200 }}>
+        <div style={{ flex: '1 1 180px', minWidth: 160 }}>
           <Select
             label="STATUS FILTER"
             value={statusFilter}
@@ -201,13 +201,15 @@ export const InvoicesView: FC = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 10,
           marginBottom: 16,
           padding: '8px 12px',
           backgroundColor: 'var(--color-cream)',
           border: 'var(--border-hairline)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span
             style={{
               fontSize: 10,

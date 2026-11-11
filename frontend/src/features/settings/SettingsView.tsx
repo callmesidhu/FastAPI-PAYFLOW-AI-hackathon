@@ -119,7 +119,7 @@ export const SettingsView: FC = () => {
           >
             Business Owner Profile
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '16px' }}>
             <div>
               <div style={{ fontSize: '0.675rem', color: 'var(--color-muted)', letterSpacing: 'var(--tracking-wide)' }}>NAME</div>
               <div style={{ fontWeight: 600 }}>{user?.name}</div>
@@ -155,6 +155,8 @@ export const SettingsView: FC = () => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
               marginBottom: '16px',
             }}
           >
@@ -183,7 +185,7 @@ export const SettingsView: FC = () => {
             </Button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '16px', marginBottom: '20px' }}>
             <div>
               <div style={{ fontSize: '0.675rem', color: 'var(--color-muted)', letterSpacing: 'var(--tracking-wide)' }}>CONNECTIVITY</div>
               <div style={{ marginTop: '4px' }}>
@@ -204,7 +206,7 @@ export const SettingsView: FC = () => {
             </div>
             <div>
               <div style={{ fontSize: '0.675rem', color: 'var(--color-muted)', letterSpacing: 'var(--tracking-wide)' }}>TARGET REST HOST</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 600, marginTop: '2px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 600, marginTop: '2px', wordBreak: 'break-all' }}>
                 {paypalStatus?.base_url || 'https://api-m.sandbox.paypal.com'}
               </div>
             </div>
@@ -229,6 +231,8 @@ export const SettingsView: FC = () => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '10px',
             }}
           >
             <div>
@@ -255,6 +259,8 @@ export const SettingsView: FC = () => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
               marginBottom: '16px',
             }}
           >
@@ -286,7 +292,7 @@ export const SettingsView: FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
               gap: '16px',
               marginBottom: '20px',
             }}

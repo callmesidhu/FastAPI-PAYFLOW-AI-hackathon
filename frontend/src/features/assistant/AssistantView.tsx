@@ -135,20 +135,18 @@ export const AssistantView: FC = () => {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <PageHeader
-          eyebrow="CONVERSATIONAL AR AGENT"
-          title="AI Assistant"
-          subtitle="Issue natural-language billing instructions. Authoritative calculations are made server-side, and no action sends without your approval."
-        />
-        {messages.length > 0 && (
-          <div style={{ paddingTop: '12px' }}>
+      <PageHeader
+        eyebrow="CONVERSATIONAL AR AGENT"
+        title="AI Assistant"
+        subtitle="Issue natural-language billing instructions. Authoritative calculations are made server-side, and no action sends without your approval."
+        actions={
+          messages.length > 0 ? (
             <Button variant="outline" size="sm" onClick={handleReset}>
               RESET THREAD
             </Button>
-          </div>
-        )}
-      </div>
+          ) : undefined
+        }
+      />
 
       {error && (
         <div
@@ -174,6 +172,7 @@ export const AssistantView: FC = () => {
 
       {/* Main Conversation Canvas */}
       <div
+        className="payflow-chat-shell"
         style={{
           backgroundColor: 'var(--color-cream)',
           border: 'var(--border-hairline)',
@@ -188,6 +187,7 @@ export const AssistantView: FC = () => {
       >
         {/* Messages Body */}
         <div
+          className="payflow-chat-messages"
           style={{
             flex: 1,
             overflowY: 'auto',
@@ -271,6 +271,7 @@ export const AssistantView: FC = () => {
             messages.map((msg) => (
               <div
                 key={msg.id}
+                className="payflow-chat-bubble"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -536,6 +537,8 @@ export const AssistantView: FC = () => {
                             style={{
                               display: 'flex',
                               justifyContent: 'space-between',
+                              flexWrap: 'wrap',
+                              gap: '8px',
                               padding: '8px 12px',
                               backgroundColor: 'var(--color-bg)',
                               border: 'var(--border-hairline)',
@@ -581,6 +584,7 @@ export const AssistantView: FC = () => {
         {/* Input Form */}
         <form
           onSubmit={handleSubmit}
+          className="payflow-chat-form"
           style={{
             padding: '16px 20px',
             backgroundColor: 'var(--color-bg)',
@@ -588,9 +592,10 @@ export const AssistantView: FC = () => {
             display: 'flex',
             gap: '12px',
             alignItems: 'flex-end',
+            flexWrap: 'wrap',
           }}
         >
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
             <TextArea
               rows={2}
               placeholder="Enter a billing instruction (e.g. 'Draft an invoice for Acme Global for $1,200 USD due in 14 days')"

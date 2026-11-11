@@ -58,9 +58,12 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
       }}
     >
       <div
+        className="payflow-modal-card"
         style={{
           width: '100%',
           maxWidth: '460px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
           backgroundColor: 'var(--color-bg)',
           border: 'var(--border-hairline)',
           borderRadius: 'var(--radius-sm)',
@@ -102,6 +105,7 @@ export const ConfirmDialog: FC<ConfirmDialogProps> = ({
             justifyContent: 'flex-end',
             gap: '12px',
             marginTop: '8px',
+            flexWrap: 'wrap',
           }}
         >
           <Button variant="outline" size="sm" onClick={onCancel} disabled={isLoading}>

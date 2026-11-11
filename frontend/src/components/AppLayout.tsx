@@ -47,6 +47,8 @@ export const AppLayout: FC<AppLayoutProps> = ({
       style={{
         display: 'flex',
         minHeight: '100vh',
+        width: '100%',
+        overflowX: 'hidden',
         backgroundColor: 'var(--color-bg)',
       }}
     >
@@ -252,15 +254,19 @@ export const AppLayout: FC<AppLayoutProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle navigation menu"
             style={{
-              padding: '6px 10px',
+              padding: '6px 12px',
               backgroundColor: 'var(--color-ink)',
               color: 'var(--color-bg)',
               border: 'none',
+              borderRadius: 'var(--radius-sm)',
               fontSize: '0.7rem',
+              fontWeight: 600,
               letterSpacing: 'var(--tracking-wider)',
+              cursor: 'pointer',
             }}
           >
             {mobileMenuOpen ? 'CLOSE' : 'MENU'}
@@ -278,6 +284,8 @@ export const AppLayout: FC<AppLayoutProps> = ({
               display: 'flex',
               flexDirection: 'column',
               gap: '6px',
+              maxHeight: 'calc(100vh - 58px)',
+              overflowY: 'auto',
             }}
             className="payflow-mobile-nav"
           >
@@ -308,6 +316,56 @@ export const AppLayout: FC<AppLayoutProps> = ({
                 </button>
               );
             })}
+
+            {(userEmail || onLogout) && (
+              <div
+                style={{
+                  marginTop: '10px',
+                  paddingTop: '12px',
+                  borderTop: 'var(--border-hairline)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                {userEmail && (
+                  <div
+                    style={{
+                      fontSize: '0.725rem',
+                      color: 'var(--color-muted)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {userEmail}
+                  </div>
+                )}
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onLogout();
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--color-ink)',
+                      fontSize: '0.675rem',
+                      letterSpacing: 'var(--tracking-wider)',
+                      textTransform: 'uppercase',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      padding: '4px 0',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Sign Out →
+                  </button>
+                )}
+              </div>
+            )}
           </nav>
         )}
 
