@@ -59,6 +59,8 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
               fontSize: '0.875rem',
               color: 'var(--color-ink)',
               outline: 'none',
+              boxSizing: 'border-box',
+              display: 'block',
               ...style,
             }}
             className={`payflow-input ${className}`}

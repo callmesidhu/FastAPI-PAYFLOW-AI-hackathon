@@ -126,6 +126,7 @@ textarea:focus-visible,
 .payflow-input {
   box-shadow: var(--shadow-input);
   outline: none !important;
+  box-sizing: border-box !important;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
 }
 
@@ -134,8 +135,10 @@ textarea:focus-visible,
 }
 
 .payflow-input:focus,
-.payflow-input:focus-visible {
+.payflow-input:focus-visible,
+input.payflow-input:focus {
   outline: none !important;
+  outline-style: none !important;
   border-color: var(--color-ink) !important;
   box-shadow: var(--shadow-input-focus) !important;
   background-color: #FFFFFF !important;
