@@ -71,6 +71,9 @@ export const RegisterView: FC = () => {
               objectFit: 'contain',
               display: 'block',
               margin: '0 auto',
+              border: '1px solid var(--color-hairline)',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: '0 1px 3px rgba(11, 11, 11, 0.04)',
             }}
           />
         </div>
