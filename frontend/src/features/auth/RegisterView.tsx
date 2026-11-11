@@ -52,19 +52,19 @@ export const RegisterView: FC = () => {
         style={{
           width: '100%',
           maxWidth: '480px',
-          backgroundColor: 'var(--color-cream)',
-          border: 'var(--border-hairline)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '48px 36px 40px',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid var(--color-hairline)',
+          borderRadius: 'var(--radius-md)',
+          padding: '44px 36px 36px',
           boxShadow: 'var(--shadow-card)',
         }}
       >
         {/* Wordmark Header */}
-        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img
             src="/logo.png"
-            alt="PAYFLOW Logo Mark"
-            style={{ width: '52px', height: '52px', objectFit: 'contain', marginBottom: '20px' }}
+            alt="PAYFLOW Logo"
+            style={{ width: '48px', height: '48px', objectFit: 'contain', marginBottom: '16px' }}
             onError={(e) => {
               (e.target as HTMLElement).style.display = 'none';
             }}
@@ -83,14 +83,15 @@ export const RegisterView: FC = () => {
           </h1>
           <div
             style={{
-              fontSize: '0.65rem',
-              letterSpacing: 'var(--tracking-widest)',
+              fontSize: '0.675rem',
+              letterSpacing: 'var(--tracking-wider)',
               textTransform: 'uppercase',
               color: 'var(--color-muted)',
               marginTop: '6px',
+              fontWeight: 500,
             }}
           >
-            CREATE BUSINESS OWNER ACCOUNT
+            Create Business Owner Account
           </div>
         </div>
 
@@ -100,7 +101,7 @@ export const RegisterView: FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <TextInput
             label="Your Full Name"
             type="text"
@@ -144,15 +145,15 @@ export const RegisterView: FC = () => {
           <Button
             type="submit"
             variant="primary"
-            size="lg"
+            size="md"
             isLoading={isSubmitting}
-            style={{ width: '100%', marginTop: '4px' }}
+            style={{ width: '100%', marginTop: '6px' }}
           >
-            REGISTER ACCOUNT →
+            Create Account & Get Started →
           </Button>
         </form>
 
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-muted)' }}>
+        <div style={{ marginTop: '22px', textAlign: 'center', fontSize: '0.825rem', color: 'var(--color-muted)' }}>
           Already have an account?{' '}
           <Link
             to="/login"
@@ -160,8 +161,8 @@ export const RegisterView: FC = () => {
             style={{
               fontWeight: 600,
               color: 'var(--color-ink)',
-              textDecoration: 'none',
-              letterSpacing: '0.02em',
+              textDecoration: 'underline',
+              textUnderlineOffset: '3px',
             }}
           >
             Sign In

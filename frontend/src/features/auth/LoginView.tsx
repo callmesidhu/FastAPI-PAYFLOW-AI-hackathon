@@ -55,19 +55,19 @@ export const LoginView: FC = () => {
         style={{
           width: '100%',
           maxWidth: '440px',
-          backgroundColor: 'var(--color-cream)',
-          border: 'var(--border-hairline)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '48px 36px 40px',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid var(--color-hairline)',
+          borderRadius: 'var(--radius-md)',
+          padding: '44px 36px 36px',
           boxShadow: 'var(--shadow-card)',
         }}
       >
         {/* Wordmark Header */}
-        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img
             src="/logo.png"
-            alt="PAYFLOW Logo Mark"
-            style={{ width: '52px', height: '52px', objectFit: 'contain', marginBottom: '20px' }}
+            alt="PAYFLOW Logo"
+            style={{ width: '48px', height: '48px', objectFit: 'contain', marginBottom: '16px' }}
             onError={(e) => {
               (e.target as HTMLElement).style.display = 'none';
             }}
@@ -86,11 +86,12 @@ export const LoginView: FC = () => {
           </h1>
           <div
             style={{
-              fontSize: '0.65rem',
-              letterSpacing: 'var(--tracking-widest)',
+              fontSize: '0.675rem',
+              letterSpacing: 'var(--tracking-wider)',
               textTransform: 'uppercase',
               color: 'var(--color-muted)',
               marginTop: '6px',
+              fontWeight: 500,
             }}
           >
             ACCOUNTS RECEIVABLE AGENT • SIGN IN
@@ -103,7 +104,7 @@ export const LoginView: FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <TextInput
             label="Business Email"
             type="email"
@@ -127,24 +128,24 @@ export const LoginView: FC = () => {
           <Button
             type="submit"
             variant="primary"
-            size="lg"
+            size="md"
             isLoading={isSubmitting}
-            style={{ width: '100%', marginTop: '4px' }}
+            style={{ width: '100%', marginTop: '6px' }}
           >
-            AUTHENTICATE →
+            Authenticate →
           </Button>
         </form>
 
         {/* Demo Fast-fill Band */}
         <div
           style={{
-            marginTop: '28px',
+            marginTop: '26px',
             paddingTop: '20px',
-            borderTop: 'var(--border-subtle)',
+            borderTop: '1px solid rgba(58, 52, 44, 0.12)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '10px',
+            gap: '8px',
           }}
         >
           <button
@@ -152,28 +153,27 @@ export const LoginView: FC = () => {
             onClick={handleFillDemo}
             className="demo-fill-btn"
             style={{
-              background: 'none',
-              border: 'var(--border-subtle)',
+              background: 'var(--color-bg)',
+              border: '1px solid var(--color-hairline)',
               borderRadius: 'var(--radius-sm)',
-              padding: '10px 20px',
-              color: 'var(--color-muted)',
-              fontSize: '0.7rem',
-              letterSpacing: 'var(--tracking-wide)',
-              textTransform: 'uppercase',
+              padding: '9px 18px',
+              color: 'var(--color-ink)',
+              fontSize: '0.72rem',
+              letterSpacing: '0.04em',
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all var(--transition-fast)',
             }}
           >
-            ⚡ Fill Demo Credentials
+            Fill Demo Credentials
           </button>
-          <span style={{ fontSize: '0.65rem', color: 'var(--color-muted)', textAlign: 'center', lineHeight: 1.4 }}>
-            Demo credentials are separate from PayPal Sandbox accounts.
+          <span style={{ fontSize: '0.675rem', color: 'var(--color-muted)', textAlign: 'center', lineHeight: 1.4 }}>
+            Pre-loaded with sample studio data & audit trail
           </span>
         </div>
 
         {/* Registration Link */}
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-muted)' }}>
+        <div style={{ marginTop: '22px', textAlign: 'center', fontSize: '0.825rem', color: 'var(--color-muted)' }}>
           Don't have an account?{' '}
           <Link
             to="/register"
@@ -181,8 +181,8 @@ export const LoginView: FC = () => {
             style={{
               fontWeight: 600,
               color: 'var(--color-ink)',
-              textDecoration: 'none',
-              letterSpacing: '0.02em',
+              textDecoration: 'underline',
+              textUnderlineOffset: '3px',
             }}
           >
             Register Business

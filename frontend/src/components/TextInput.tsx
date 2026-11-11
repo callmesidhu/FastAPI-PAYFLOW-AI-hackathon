@@ -51,15 +51,14 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
             disabled={disabled}
             style={{
               width: '100%',
-              backgroundColor: disabled ? 'var(--color-cream)' : 'var(--color-white)',
-              border: error ? '1px solid var(--color-overdue)' : 'var(--border-hairline)',
+              backgroundColor: disabled ? 'rgba(237, 230, 214, 0.4)' : '#FFFFFF',
+              border: error ? '1.5px solid var(--color-overdue)' : '1px solid var(--color-hairline)',
               borderRadius: 'var(--radius-sm)',
-              padding: leftIcon ? '12px 14px 12px 38px' : rightIcon ? '12px 38px 12px 14px' : '12px 14px',
+              padding: leftIcon ? '11px 14px 11px 38px' : rightIcon ? '11px 38px 11px 14px' : '11px 14px',
               fontFamily: 'var(--font-sans)',
-              fontSize: '0.85rem',
+              fontSize: '0.875rem',
               color: 'var(--color-ink)',
               outline: 'none',
-              transition: 'border-color var(--transition-fast)',
               ...style,
             }}
             className={`payflow-input ${className}`}
