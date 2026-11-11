@@ -112,29 +112,28 @@ export const AppLayout: FC<AppLayoutProps> = ({
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: 'var(--radius-sm)',
-                    border: isActive ? '1px solid var(--color-hairline)' : '1px solid transparent',
-                    borderLeft: isActive ? '3px solid var(--color-ink)' : '3px solid transparent',
-                    backgroundColor: 'transparent',
-                    color: 'var(--color-ink)',
+                    border: isActive ? '1px solid var(--color-ink)' : '1px solid transparent',
+                    backgroundColor: isActive ? 'var(--color-ink)' : 'transparent',
+                    color: isActive ? 'var(--color-bg)' : 'var(--color-ink)',
                     fontFamily: 'var(--font-sans)',
                     fontSize: '0.75rem',
                     letterSpacing: 'var(--tracking-wide)',
                     textTransform: 'uppercase',
-                    fontWeight: isActive ? 700 : 600,
+                    fontWeight: 600,
                     textAlign: 'left',
                     cursor: 'pointer',
                     transition: 'all var(--transition-fast)',
                   }}
                   className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
                 >
-                  <span style={{ color: 'var(--color-ink)' }}>{item.label}</span>
+                  <span style={{ color: isActive ? 'var(--color-bg)' : 'var(--color-ink)' }}>{item.label}</span>
                   {item.badge !== undefined && (
                     <span
                       style={{
                         fontSize: '0.65rem',
                         padding: '2px 6px',
-                        backgroundColor: 'var(--color-cream)',
-                        color: 'var(--color-ink)',
+                        backgroundColor: isActive ? 'rgba(255, 255, 255, 0.2)' : 'var(--color-cream)',
+                        color: isActive ? 'var(--color-bg)' : 'var(--color-ink)',
                         borderRadius: 'var(--radius-sm)',
                       }}
                     >
@@ -262,20 +261,19 @@ export const AppLayout: FC<AppLayoutProps> = ({
                   className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
                   style={{
                     padding: '10px 14px',
-                    backgroundColor: 'transparent',
-                    color: 'var(--color-ink)',
-                    border: isActive ? '1px solid var(--color-hairline)' : '1px solid transparent',
-                    borderLeft: isActive ? '3px solid var(--color-ink)' : '3px solid transparent',
+                    backgroundColor: isActive ? 'var(--color-ink)' : 'transparent',
+                    color: isActive ? 'var(--color-bg)' : 'var(--color-ink)',
+                    border: isActive ? '1px solid var(--color-ink)' : 'var(--border-hairline)',
                     borderRadius: 'var(--radius-sm)',
                     textAlign: 'left',
                     textTransform: 'uppercase',
                     fontSize: '0.75rem',
                     letterSpacing: 'var(--tracking-wide)',
-                    fontWeight: isActive ? 700 : 600,
+                    fontWeight: 600,
                     cursor: 'pointer',
                   }}
                 >
-                  <span style={{ color: 'var(--color-ink)' }}>{item.label}</span>
+                  <span style={{ color: isActive ? 'var(--color-bg)' : 'var(--color-ink)' }}>{item.label}</span>
                 </button>
               );
             })}
