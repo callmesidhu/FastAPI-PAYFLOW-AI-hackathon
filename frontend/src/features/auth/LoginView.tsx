@@ -34,12 +34,6 @@ export const LoginView: FC = () => {
     }
   };
 
-  const handleFillDemo = () => {
-    setEmail('demo@payflowai.com');
-    setPassword('DemoPassword2026!');
-    setError(null);
-  };
-
   return (
     <div
       style={{
@@ -115,42 +109,6 @@ export const LoginView: FC = () => {
             Authenticate →
           </Button>
         </form>
-
-        {/* Demo Fast-fill Band */}
-        <div
-          style={{
-            marginTop: '26px',
-            paddingTop: '20px',
-            borderTop: '1px solid rgba(58, 52, 44, 0.12)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            className="demo-fill-btn"
-            style={{
-              background: 'var(--color-bg)',
-              border: '1px solid var(--color-hairline)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '9px 18px',
-              color: 'var(--color-ink)',
-              fontSize: '0.72rem',
-              letterSpacing: '0.04em',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all var(--transition-fast)',
-            }}
-          >
-            Fill Demo Credentials
-          </button>
-          <span style={{ fontSize: '0.675rem', color: 'var(--color-muted)', textAlign: 'center', lineHeight: 1.4 }}>
-            Pre-loaded with sample studio data & audit trail
-          </span>
-        </div>
 
         {/* Registration Link */}
         <div style={{ marginTop: '22px', textAlign: 'center', fontSize: '0.825rem', color: 'var(--color-muted)' }}>
