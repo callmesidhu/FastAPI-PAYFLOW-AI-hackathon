@@ -2,7 +2,7 @@
 editable preview generation, and safe confirmation.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -91,8 +91,8 @@ async def test_natural_language_extraction_standard_flow(
     assert draft.subtotal == "500.00"
     assert draft.tax == "0.00"  # Tax must not be inferred unless requested
 
-    # Check relative date calculation
-    today = date.today()
+    # Check relative date calculation (user_timezone="UTC")
+    today = datetime.now(timezone.utc).date()
     expected_due = today + timedelta(days=7)
     assert draft.due_date == str(expected_due)
     assert draft.due_date_relative_text == "due in seven days"

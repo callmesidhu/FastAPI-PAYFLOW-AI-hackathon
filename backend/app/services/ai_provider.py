@@ -11,9 +11,10 @@ Defines a clean, swappable service interface for AI LLM providers
 """
 
 from abc import ABC, abstractmethod
+import asyncio
 from decimal import Decimal
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from app.core.config import get_settings
@@ -56,9 +57,15 @@ class BaseAIProvider(ABC):
 class GeminiAIProvider(BaseAIProvider):
     """Google Gemini AI integration using official Google GenAI SDK."""
 
+    FALLBACK_MODELS = (
+        "gemini-3.1-flash-lite-preview",
+        "gemini-flash-lite-latest",
+        "gemini-3-flash-preview",
+    )
+
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None) -> None:
         self._api_key = api_key or settings.AI_API_KEY
-        self._model = model or settings.AI_MODEL or "gemini-3.8-flash"
+        self._model = model or settings.AI_MODEL or "gemini-3.1-flash-lite-preview"
         self._client: Any = None
 
     @property
@@ -75,11 +82,95 @@ class GeminiAIProvider(BaseAIProvider):
                 raise RuntimeError("AI_API_KEY is not configured for Gemini provider.")
             try:
                 from google import genai
-                self._client = genai.Client(api_key=self._api_key)
+                self._client = genai.Client(
+                    api_key=self._api_key,
+                    http_options={"timeout": 20000},
+                )
             except Exception as err:
                 logger.error("Failed to initialize Google GenAI client: %s", str(err))
                 raise RuntimeError(f"Unable to initialize Gemini client: {err}")
         return self._client
+
+    @staticmethod
+    def _build_genai_tools(tools: Optional[List[Dict[str, Any]]]) -> Optional[List[Any]]:
+        """Convert provider-agnostic tool dicts into Google GenAI FunctionDeclarations."""
+        if not tools:
+            return None
+        from google.genai import types
+
+        declarations = [
+            types.FunctionDeclaration(
+                name=t["name"],
+                description=t.get("description", ""),
+                parameters=t.get("parameters"),
+            )
+            for t in tools
+        ]
+        return [types.Tool(function_declarations=declarations)]
+
+    @staticmethod
+    def _extract_response_parts(response: Any) -> Tuple[str, List[AIToolCall]]:
+        """Extract text and function_call parts safely without triggering .text ValueError."""
+        text_segments: List[str] = []
+        tool_calls: List[AIToolCall] = []
+
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    text_segments.append(part_text)
+                fc = getattr(part, "function_call", None)
+                if fc and getattr(fc, "name", None):
+                    call_id = getattr(fc, "id", None) or f"call_{len(tool_calls)}"
+                    raw_args = getattr(fc, "args", None) or {}
+                    tool_calls.append(
+                        AIToolCall(
+                            id=str(call_id),
+                            name=str(fc.name),
+                            arguments=dict(raw_args),
+                        )
+                    )
+
+        # Fallback to SDK convenience property when only function_calls exist at top level
+        if not tool_calls and getattr(response, "function_calls", None):
+            for idx, fc in enumerate(response.function_calls):
+                if getattr(fc, "name", None):
+                    tool_calls.append(
+                        AIToolCall(
+                            id=str(getattr(fc, "id", None) or f"call_{idx}"),
+                            name=str(fc.name),
+                            arguments=dict(getattr(fc, "args", None) or {}),
+                        )
+                    )
+
+        return "".join(text_segments).strip(), tool_calls
+
+    @staticmethod
+    def _detect_clarification(messages: List[Dict[str, Any]], text_content: str, tool_calls: List[AIToolCall]) -> bool:
+        """Identify when Gemini requested missing invoice/customer details before acting."""
+        if tool_calls or not text_content:
+            return False
+        # Avoid flagging tool-result syntheses as clarifications
+        if messages and messages[-1].get("role") == "tool":
+            return False
+        lower = text_content.lower()
+        cues = (
+            "who should",
+            "which customer",
+            "please specify",
+            "please provide",
+            "additional details",
+            "need a few",
+            "require a few",
+            "could you clarify",
+            "what service",
+            "what amount",
+            "who is this invoice",
+        )
+        return "?" in text_content and any(cue in lower for cue in cues)
 
     async def generate_response(
         self,
@@ -90,35 +181,89 @@ class GeminiAIProvider(BaseAIProvider):
         max_output_tokens: int = 1024,
     ) -> AICompletionResult:
         """Execute structured call via Gemini SDK with secret scrubbing and timeout."""
-        # Sanitize inbound text
         sanitized_instruction = scrub_secrets(system_instruction or "")
 
         try:
-            client = self._get_client()
-            # Convert messages into GenAI content objects
-            contents = []
-            for msg in messages:
-                role = "user" if msg.get("role") in ("user", "system") else "model"
-                contents.append({
-                    "role": role,
-                    "parts": [{"text": scrub_secrets(msg.get("content", ""))}],
-                })
+            from google.genai import types
 
-            # Call SDK (synchronous SDK wrapper or async if available)
-            response = client.models.generate_content(
-                model=self._model,
-                contents=contents,
-                config={
-                    "temperature": temperature,
-                    "max_output_tokens": max_output_tokens,
-                    "system_instruction": sanitized_instruction if sanitized_instruction else None,
-                },
+            client = self._get_client()
+            last_user_idx = max(
+                (i for i, m in enumerate(messages) if m.get("role") == "user"),
+                default=-1,
+            )
+            contents: List[Dict[str, Any]] = []
+            for idx, msg in enumerate(messages):
+                msg_role = msg.get("role", "user")
+                raw_text = scrub_secrets(str(msg.get("content", "") or ""))
+                if msg_role == "system" or not raw_text:
+                    continue
+                if msg_role == "tool":
+                    tool_name = msg.get("name", "tool")
+                    formatted = f"[Tool Result ({tool_name})]:\n{raw_text}"
+                    if idx > last_user_idx and idx == len(messages) - 1:
+                        formatted += "\n\nSummarize these verified facts clearly for the user without inventing data."
+                    contents.append({"role": "user", "parts": [{"text": formatted}]})
+                else:
+                    gemini_role = "model" if msg_role == "assistant" else "user"
+                    contents.append({"role": gemini_role, "parts": [{"text": raw_text}]})
+
+            genai_tools = self._build_genai_tools(tools)
+            config = types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_output_tokens,
+                system_instruction=sanitized_instruction if sanitized_instruction else None,
+                tools=genai_tools,
             )
 
-            text_content = response.text if hasattr(response, "text") else ""
+            candidate_models = [self._model] + [
+                m for m in self.FALLBACK_MODELS if m != self._model
+            ]
+            response = None
+            used_model = self._model
+            last_err: Optional[Exception] = None
+
+            for candidate_model in candidate_models:
+                try:
+                    # Run blocking SDK call off the event loop with an explicit timeout
+                    response = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            client.models.generate_content,
+                            model=candidate_model,
+                            contents=contents,
+                            config=config,
+                        ),
+                        timeout=25.0,
+                    )
+                    used_model = candidate_model
+                    break
+                except Exception as err:
+                    last_err = err
+                    err_upper = str(err).upper()
+                    retryable = any(
+                        token in err_upper
+                        for token in ("429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND")
+                    ) or isinstance(err, asyncio.TimeoutError)
+                    if not retryable:
+                        raise
+                    logger.warning(
+                        "Gemini model '%s' unavailable (%s); trying fallback...",
+                        candidate_model,
+                        scrub_secrets(str(err))[:160],
+                    )
+
+            if response is None:
+                raise last_err or RuntimeError("All Gemini models failed.")
+
+            text_content, tool_calls = self._extract_response_parts(response)
+            scrubbed_text = scrub_secrets(text_content)
+            clarification = self._detect_clarification(messages, scrubbed_text, tool_calls)
+
             return AICompletionResult(
-                content=scrub_secrets(text_content),
-                model=self._model,
+                content=scrubbed_text or None,
+                tool_calls=tool_calls,
+                clarification_needed=clarification,
+                clarification_question=scrubbed_text if clarification else None,
+                model=used_model,
             )
 
         except Exception as err:
