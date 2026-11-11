@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     # AI Provider
     AI_PROVIDER: str = Field(default="gemini", description="AI provider: gemini, openai, or mock")
     AI_API_KEY: str = Field(default="", description="API key for the AI provider")
-    AI_MODEL: str = Field(default="gemini-2.5-flash", description="AI model identifier")
+    AI_MODEL: str = Field(default="gemini-3.8-flash", description="AI model identifier")
 
     # Optional Email & Automation
     EMAIL_PROVIDER: Optional[str] = Field(default=None, description="Optional transactional email provider")
