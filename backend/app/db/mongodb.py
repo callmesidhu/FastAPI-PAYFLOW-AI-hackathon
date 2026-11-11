@@ -4,10 +4,46 @@ Provides lifecycle management, connection ping verification, and clean
 dependency injection for FastAPI routes.
 """
 
+from datetime import date
+from decimal import Decimal
 from typing import Optional
+from bson import Decimal128
+from bson.codec_options import CodecOptions, TypeCodec, TypeRegistry
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import ConnectionFailure, PyMongoError
 from app.core.logging import logger
+
+
+class DecimalCodec(TypeCodec):
+    """BSON codec converting Python Decimal to Decimal128 and back with full precision."""
+
+    python_type = Decimal
+    bson_type = Decimal128
+
+    def transform_python(self, value: Decimal) -> Decimal128:
+        return Decimal128(str(value))
+
+    def transform_bson(self, value: Decimal128) -> Decimal:
+        return value.to_decimal()
+
+
+class DateCodec(TypeCodec):
+    """BSON codec serializing pure datetime.date objects as ISO-8601 strings."""
+
+    python_type = date
+    bson_type = str
+
+    def transform_python(self, value: date) -> str:
+        return value.isoformat()
+
+    def transform_bson(self, value: str) -> str:
+        return value
+
+
+def get_codec_options() -> CodecOptions:
+    """Build standard BSON CodecOptions supporting Decimal, date, and UTC-aware datetimes."""
+    type_registry = TypeRegistry([DecimalCodec(), DateCodec()])
+    return CodecOptions(type_registry=type_registry, tz_aware=True)
 
 
 class MongoDBManager:
@@ -32,7 +68,7 @@ class MongoDBManager:
                 serverSelectionTimeoutMS=timeout_ms,
                 connectTimeoutMS=timeout_ms,
             )
-            self.db = self.client[db_name]
+            self.db = self.client.get_database(db_name, codec_options=get_codec_options())
 
             # Verify connection with an explicit ping
             await self.ping()
