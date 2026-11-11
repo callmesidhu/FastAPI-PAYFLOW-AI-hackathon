@@ -332,13 +332,32 @@ export const LandingPage: FC = () => {
       <section
         style={{
           position: 'relative',
-          padding: '80px 24px 60px',
+          padding: '60px 24px 60px',
           maxWidth: '1280px',
           margin: '0 auto',
           textAlign: 'center',
         }}
       >
         <WaveDecoration position="top-right" width={220} height={110} opacity={0.15} />
+
+        {/* Big Centered Hero Logo */}
+        <div style={{ marginBottom: '36px', display: 'flex', justifyContent: 'center' }}>
+          <img
+            src="/logo.png"
+            alt="PAYFLOW AI — Intelligent Receivables"
+            style={{
+              width: '100%',
+              maxWidth: '380px',
+              height: 'auto',
+              objectFit: 'contain',
+              border: '1px solid var(--color-hairline)',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: '0 4px 16px rgba(42, 34, 25, 0.08)',
+              backgroundColor: '#FFFFFF',
+              display: 'block',
+            }}
+          />
+        </div>
 
         <div
           style={{
