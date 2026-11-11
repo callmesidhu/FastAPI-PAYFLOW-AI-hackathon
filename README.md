@@ -21,6 +21,7 @@ flowchart TD
     subgraph Frontend["React 18 + Vite (Quiet-Luxury UI)"]
         UI_Dash["Receivables Dashboard"]
         UI_Grid["AG Grid Invoice Ledger"]
+        UI_Cal["Bryntum Receivables Calendar"]
         UI_Appr["Human Approval Center"]
         UI_AI["AI Assistant Interface"]
         UI_Analytics["AG Grid Aging Analytics"]
@@ -102,7 +103,7 @@ PAYFLOW AI interacts deeply with the official **PayPal REST Invoicing API v2** (
 6. **Strict Sandbox Invariant**: `PAYPAL_BASE_URL` is hardcoded to `https://api-m.sandbox.paypal.com`. Live endpoints are rejected at startup.
 
 ### How AI Is Used (Google Gemini & Structured Tool Calling)
-PAYFLOW AI uses **Google Gemini 2.5 Flash** (with automatic zero-config **MockAIProvider** fallback for offline evaluation):
+PAYFLOW AI uses **Google Gemini 3.8 Flash** (with automatic zero-config **MockAIProvider** fallback for offline evaluation):
 1. **Natural Language Invoice Extraction**: Converts unstructured requests (e.g. *"Create a $2,400 invoice for Globex for Brand Redesign due in 14 days"*) into structured drafts.
 2. **Clarification Barrier**: If client name, currency, or due date are ambiguous or missing, the model asks clarifying questions instead of hallucinating amounts or currencies.
 3. **Human-in-the-Loop Safeguard**: Extracted drafts return with `is_suggestion=True`. The LLM cannot write to the database or contact PayPal directly; the merchant must review and confirm the draft.
@@ -127,10 +128,11 @@ Built with pride for the **PayPal AI Hackathon**:
 | Sponsor / Technology | Status | Implementation Details |
 | :--- | :--- | :--- |
 | **AG Grid** | **Integrated & Active** | Official `ag-grid-react` and `ag-grid-community` v36 libraries powering the Invoices Explorer (`/invoices`) and Customer Receivables Balances (`/analytics`). Features multi-column sorting, column filters, real-time quick search, pagination, and CSV export, styled in editorial quiet-luxury design tokens. |
-| **Postman** | **Verified & Included** | Complete Postman Collection v2.1.0 at [`docs/postman/PayflowAI.postman_collection.json`](docs/postman/PayflowAI.postman_collection.json) covering 11 folders and 30+ requests with collection variables and webhook simulation guide. |
-| **APIMatic** | **Applied in Workflow** | Installed via `npx context-plugins install paypal -y` ([docs/apimatic-usage.md](docs/apimatic-usage.md)). Guided OAuth token caching, idempotency header verification, and official Invoicing v2 schema mapping. |
+| **Bryntum** | **Integrated & Active** | Official `@bryntum/calendar-react` and `@bryntum/calendar-trial` powering the Receivables Calendar & Timeline (`/calendar`). Visualizes invoice due dates, aging, and scheduled customer follow-up cadences across Month, Week, and Agenda views with interactive status color coding and direct invoice drill-down. |
+| **Render** | **Integrated & Active** | Cloud production hosting for the FastAPI core backend at `https://fastapi-payflow-ai-hackathon.onrender.com`. Complete infrastructure-as-code blueprint (`render.yaml`) and automated 10-minute GitHub Actions keep-alive workflow (`.github/workflows/render-keep-alive.yml`). |
+| **Postman** | **Verified & Included** | Complete Postman Collection v2.1.0 at [`docs/postman/PayflowAI.postman_collection.json`](docs/postman/PayflowAI.postman_collection.json) covering 11 folders and 30+ requests with collection variables, pre-request scripts, test assertions, and webhook simulation guide. |
+| **APIMatic** | **Applied in Workflow** | Installed into development workspaces via `npx --yes context-plugins install paypal -y` ([docs/apimatic-usage.md](docs/apimatic-usage.md)). Guided OAuth token caching, idempotency header verification, and official Invoicing v2 schema mapping. |
 | **Zapier** | **Integrated & Active** | Secure merchant notification automation ([docs/zapier-integration.md](docs/zapier-integration.md)). Approved reminders dispatch signed HMAC-SHA256 payloads to Zapier Catch Hooks. Triggered only after explicit merchant approval. |
-| **Bryntum** | **Evaluated & Omitted** | Evaluated per Prompt 26. Required commercial registry authentication (`npm.bryntum.com`). Adhering to prompt instructions (*"Document actual usage only"*), Bryntum was omitted from Devpost claiming. |
 
 ---
 

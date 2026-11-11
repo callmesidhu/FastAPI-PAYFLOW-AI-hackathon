@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@bryntum/calendar': path.resolve(__dirname, './node_modules/@bryntum/calendar-trial'),
     },
   },
   server: {
@@ -41,6 +42,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'ag-grid': ['ag-grid-community', 'ag-grid-react'],
+          bryntum: ['@bryntum/calendar-react'],
         },
       },
     },

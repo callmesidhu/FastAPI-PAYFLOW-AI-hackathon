@@ -104,12 +104,13 @@ We engineered a clean-architecture stack adhering strictly to financial software
 | Category | Item | Actual Usage in Codebase | Truthfulness Verification |
 |---|---|---|---|
 | **Primary Platform** | **PayPal Invoicing v2 API** | `/v2/invoicing/invoices`, `/v2/invoicing/invoices/{id}/send`, `/v1/notifications/verify-webhook-signature` | **VERIFIED.** Real REST client in `backend/app/services/paypal_service.py`. Uses PayPal Sandbox credentials. |
-| **Sponsor Integration** | **Google Gemini** | `gemini-2.5-flash` via Google Generative AI SDK with 5-tool allowlist | **VERIFIED.** Real orchestrator in `backend/app/services/ai_orchestrator.py`. Has `MockAIProvider` fallback if key absent. |
-| **Sponsor Integration** | **AG Grid Community v36** | `@ag-grid-community/react` + `ag-grid-community` v36 | **VERIFIED.** Active in `/invoices` (invoice directory) and `/analytics` (aging ledger) with quiet-luxury styling. |
-| **Developer Tools** | **Postman** | Postman Collection v2.1.0 at `docs/postman/PayflowAI.postman_collection.json` | **VERIFIED.** Complete collection with environments, variables, and automated tests. |
-| **Developer Tools** | **APIMatic** | Context plugin evaluated for PayPal Invoicing API request/response schemas | **VERIFIED.** Detailed evaluation report and validation notes in `docs/apimatic-usage.md`. |
-| **Automation** | **Zapier** | HMAC-SHA256 signed Catch Hook event dispatch on approved reminders | **VERIFIED.** Integration architecture and webhook dispatcher in `docs/zapier-integration.md`. |
-| **Evaluated Sponsor** | **Bryntum** | Evaluated for calendar/timeline scheduling | **TRUTHFULLY OMITTED.** Evaluated and explicitly not claimed on Devpost due to licensing & MVP prioritization. |
+| **Sponsor Integration** | **Google Gemini** | `gemini-3.8-flash` via official Google GenAI SDK with 5-tool allowlist | **VERIFIED.** Real orchestrator in `backend/app/services/ai_orchestrator.py`. Has `MockAIProvider` fallback if key absent. |
+| **Sponsor Integration** | **AG Grid Community v36** | `ag-grid-community` + `ag-grid-react` v36 | **VERIFIED.** Active in `/invoices` (invoice directory) and `/analytics` (aging ledger) with quiet-luxury styling, multi-column sorting, filtering, and CSV export. |
+| **Sponsor Integration** | **Bryntum Calendar** | `@bryntum/calendar-react` + `@bryntum/calendar-trial` | **VERIFIED.** Active in `/calendar` (`BryntumInvoiceCalendar.tsx`) for invoice due-date calendar, scheduled reminder timelines, and status filtering across Month, Week, and Agenda views. |
+| **Sponsor Integration** | **Render** | Cloud hosting for FastAPI + GitHub Actions keep-alive | **VERIFIED.** Production deployment at `https://fastapi-payflow-ai-hackathon.onrender.com` with `render.yaml` blueprint and 10-minute automated cron keep-alive. |
+| **Developer Tools** | **Postman** | Postman Collection v2.1.0 at `docs/postman/PayflowAI.postman_collection.json` | **VERIFIED.** Complete collection with environments, variables, and automated tests for 28 endpoints. |
+| **Developer Tools** | **APIMatic** | PayPal Context Plugin installed in editor workspaces | **VERIFIED.** Installed via `npx --yes context-plugins install paypal -y`. Detailed evaluation report and validation notes in `docs/apimatic-usage.md`. |
+| **Automation** | **Zapier** | HMAC-SHA256 signed Catch Hook event dispatch on approved reminders | **VERIFIED.** Integration architecture and webhook dispatcher in `backend/app/services/reminder_service.py` and `docs/zapier-integration.md`. |
 
 ---
 
@@ -122,8 +123,8 @@ We engineered a clean-architecture stack adhering strictly to financial software
 | **Organization Name** | **XyphX** (or `N/A` if submitting as independent individuals) |
 | **Is this a new or existing project?** | **New Project.** Built entirely from scratch during the hackathon submission window. |
 | **Which PayPal APIs were used?** | **PayPal Invoicing v2 REST API** (`POST /v2/invoicing/invoices`, `POST /v2/invoicing/invoices/{id}/send`, `GET /v2/invoicing/invoices/{id}`) and **PayPal Webhooks API v1** (`POST /v1/notifications/verify-webhook-signature`). All calls target `https://api-m.sandbox.paypal.com`. |
-| **Which AI models/providers were used?** | **Google Gemini** (`gemini-2.5-flash` / `gemini-1.5-flash`) via the official Google Generative AI Python SDK (`google-generativeai`), with structured function calling and prompt injection defenses. |
-| **Sponsor tools used** | **PayPal**, **Google Gemini**, **AG Grid**, **Postman**, **APIMatic**, **Zapier**. *(Bryntum is NOT selected).* |
+| **Which AI models/providers were used?** | **Google Gemini** (`gemini-3.8-flash`) via the official Google Generative AI Python SDK (`google-generativeai`), with structured function calling and prompt injection defenses. |
+| **Sponsor tools used** | **PayPal**, **Google Gemini**, **AG Grid**, **Bryntum**, **Render**, **Postman**, **APIMatic**, **Zapier**. |
 | **AI assistance disclosure** | Coding and development assistance provided by Antigravity AI coding assistant and Claude. All core logic, architectures, and tests were verified and validated by the team. |
 | **Age & Eligibility** | Both team members meet all age and residency eligibility requirements under the official hackathon rules. |
 

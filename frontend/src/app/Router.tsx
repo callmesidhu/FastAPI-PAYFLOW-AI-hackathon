@@ -9,6 +9,7 @@ import { AssistantView } from '../features/assistant/AssistantView';
 import { InvoicesView } from '../features/invoices/InvoicesView';
 import { InvoiceFormView } from '../features/invoices/InvoiceFormView';
 import { InvoiceDetailView } from '../features/invoices/InvoiceDetailView';
+import { BryntumInvoiceCalendar } from '../features/calendar/BryntumInvoiceCalendar';
 import { CustomersView } from '../features/customers/CustomersView';
 import { ApprovalsView } from '../features/approvals/ApprovalsView';
 import { AnalyticsView } from '../features/analytics/AnalyticsView';
@@ -96,6 +97,14 @@ export const AppRouter: FC = () => {
               element={
                 <AuthenticatedLayoutWrapper>
                   <InvoiceFormView />
+                </AuthenticatedLayoutWrapper>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <AuthenticatedLayoutWrapper>
+                  <BryntumInvoiceCalendar />
                 </AuthenticatedLayoutWrapper>
               }
             />

@@ -66,7 +66,9 @@ export const setOnUnauthorizedCallback = (callback: () => void) => {
   onUnauthorizedCallback = callback;
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '') : '';
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '') : '') ||
+  'https://fastapi-payflow-ai-hackathon.onrender.com';
 
 export async function apiClient<T>(
   endpoint: string,

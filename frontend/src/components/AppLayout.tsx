@@ -21,6 +21,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'assistant', label: 'AI Assistant' },
   { id: 'invoices', label: 'Invoices' },
+  { id: 'calendar', label: 'Calendar' },
   { id: 'customers', label: 'Customers' },
   { id: 'approvals', label: 'Approval Center' },
   { id: 'analytics', label: 'Analytics' },

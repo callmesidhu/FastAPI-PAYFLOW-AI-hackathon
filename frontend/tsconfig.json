@@ -26,7 +26,8 @@
     /* Paths */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@bryntum/calendar": ["node_modules/@bryntum/calendar-trial"]
     }
   },
   "include": ["src"],
