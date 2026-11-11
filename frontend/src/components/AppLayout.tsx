@@ -89,6 +89,9 @@ export const AppLayout: FC<AppLayoutProps> = ({
                 height: 'auto',
                 objectFit: 'contain',
                 display: 'block',
+                border: '1px solid var(--color-hairline)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: '0 1px 3px rgba(11, 11, 11, 0.04)',
               }}
             />
           </div>
@@ -212,7 +215,14 @@ export const AppLayout: FC<AppLayoutProps> = ({
           <img
             src="/logo.png"
             alt="PAYFLOW AI"
-            style={{ height: '36px', width: 'auto', objectFit: 'contain' }}
+            style={{
+              height: '36px',
+              width: 'auto',
+              objectFit: 'contain',
+              border: '1px solid var(--color-hairline)',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: '0 1px 3px rgba(11, 11, 11, 0.04)',
+            }}
           />
 
           <button
