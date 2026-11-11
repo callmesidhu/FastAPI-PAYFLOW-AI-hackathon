@@ -80,7 +80,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
             }}
           >
             <img
-              src="/logo-mark.png"
+              src="/logo.png"
               alt="PAYFLOW Logo"
               style={{ width: '32px', height: '32px', objectFit: 'contain' }}
               onError={(e) => {
@@ -231,7 +231,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <img
-              src="/logo-mark.png"
+              src="/logo.png"
               alt="Logo"
               style={{ width: '22px', height: '22px', objectFit: 'contain' }}
               onError={(e) => {

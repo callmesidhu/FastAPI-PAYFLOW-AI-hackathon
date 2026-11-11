@@ -65,7 +65,7 @@ export const LoginView: FC = () => {
         {/* Wordmark Header */}
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
           <img
-            src="/logo-mark.png"
+            src="/logo.png"
             alt="PAYFLOW Logo Mark"
             style={{ width: '52px', height: '52px', objectFit: 'contain', marginBottom: '20px' }}
             onError={(e) => {
