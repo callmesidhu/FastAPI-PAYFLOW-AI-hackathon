@@ -1,6 +1,6 @@
 import { useEffect, useState, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AgCustomerBalanceGrid, Button, EmptyState, LoadingState, PageHeader } from '../../components';
+import { AgCustomerBalanceGrid, Button, EmptyState, FormattedMarkdown, LoadingState, PageHeader } from '../../components';
 import { apiClient } from '../../lib/api-client';
 
 interface AgingBucketDetail {
@@ -281,16 +281,7 @@ export const AnalyticsView: FC = () => {
 
             {aiSummary ? (
               <div>
-                <div
-                  style={{
-                    fontSize: '0.875rem',
-                    lineHeight: 1.7,
-                    whiteSpace: 'pre-wrap',
-                    color: 'var(--color-ink)',
-                  }}
-                >
-                  {aiSummary.summary}
-                </div>
+                <FormattedMarkdown content={aiSummary.summary} />
 
                 {aiSummary.payment_velocity_estimate && (
                   <div

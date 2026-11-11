@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/api-client';
-import { Button, PageHeader, StatusLabel, TextArea } from '../../components';
+import { Button, FormattedMarkdown, PageHeader, StatusLabel, TextArea } from '../../components';
 
 interface ToolCallRecord {
   name: string;
@@ -307,10 +307,14 @@ export const AssistantView: FC = () => {
                     borderRadius: 'var(--radius-sm)',
                     fontSize: '0.875rem',
                     lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
+                    whiteSpace: msg.role === 'user' ? 'pre-wrap' : undefined,
                   }}
                 >
-                  {msg.content}
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <FormattedMarkdown content={msg.content} />
+                  )}
 
                   {/* Clarification Notice */}
                   {msg.clarification_needed && (
