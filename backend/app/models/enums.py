@@ -112,6 +112,7 @@ class ActionType(str, Enum):
     CREATE_PAYPAL_INVOICE = "create_paypal_invoice"
     SEND_PAYPAL_INVOICE = "send_paypal_invoice"
     SEND_PAYMENT_REMINDER = "send_payment_reminder"
+    SEND_REMINDER = "send_payment_reminder"  # Backwards-compatible alias
     CANCEL_PAYPAL_INVOICE = "cancel_paypal_invoice"
 
 

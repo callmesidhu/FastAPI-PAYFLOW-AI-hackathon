@@ -59,7 +59,7 @@ async def enrich_approval_response(
     # Contextual fields extracted from payload snapshot or current db
     snapshot = approval.payload_snapshot or {}
     resp.invoice_number = snapshot.get("invoice_number")
-    resp.amount = snapshot.get("total")
+    resp.amount = snapshot.get("total") or snapshot.get("amount")
     resp.currency = snapshot.get("currency")
 
     customer_id = snapshot.get("customer_id")
@@ -68,9 +68,9 @@ async def enrich_approval_response(
         if cust:
             resp.customer_name = cust.get("name")
 
-    if approval.action_type == ActionType.CREATE_PAYPAL_INVOICE:
+    if approval.action_type in (ActionType.CREATE_PAYPAL_INVOICE, ActionType.SEND_PAYPAL_INVOICE):
         resp.display_title = f"Send PayPal Invoice {resp.invoice_number or ''}"
-    elif approval.action_type == ActionType.SEND_REMINDER:
+    elif approval.action_type == ActionType.SEND_PAYMENT_REMINDER:
         resp.display_title = f"Dispatch Overdue Reminder for {resp.invoice_number or ''}"
     else:
         resp.display_title = f"Authorize {approval.action_type.value}"
