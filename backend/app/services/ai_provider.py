@@ -276,6 +276,27 @@ class MockAIProvider(BaseAIProvider):
                 currency_val = "EUR"
             elif "gbp" in text or "£" in text:
                 currency_val = "GBP"
+            elif "cad" in text:
+                currency_val = "CAD"
+            elif "aud" in text:
+                currency_val = "AUD"
+            elif "jpy" in text or "¥" in text:
+                currency_val = "JPY"
+
+            # Extract service/item name when explicitly given
+            from app.services.invoice_extractor import _resolve_relative_days
+
+            item_name = "Professional Services"
+            svc_match = re.search(
+                r"\bfor\s+((?:website\s+development|consulting|design|development|workshop|services|audit|retainer|implementation)[a-z0-9_\s\-]*?)(?=\s+(?:due|by|for\s+\$|\$|in\s+\d|with)|[,.;!?]|$)",
+                text,
+            )
+            if svc_match and svc_match.group(1).strip():
+                item_name = svc_match.group(1).strip().title()
+
+            # Extract relative due days when specified (fallback Net 14)
+            rel_due = _resolve_relative_days(text)
+            due_days = rel_due[0] if rel_due and rel_due[0] > 0 else 14
 
             tool_call = AIToolCall(
                 id="call_draft_1",
@@ -284,15 +305,15 @@ class MockAIProvider(BaseAIProvider):
                     "customer_name_or_id": cust_name,
                     "items": [
                         {
-                            "name": "Professional Services",
+                            "name": item_name,
                             "quantity": "1.0",
                             "unit_price": str(amount_val),
                             "tax": "0.00",
                         }
                     ],
                     "currency": currency_val,
-                    "due_in_days": 14,
-                    "notes": "Payment terms: Net 14 days.",
+                    "due_in_days": due_days,
+                    "notes": f"Payment terms: Net {due_days} days.",
                 },
             )
             return AICompletionResult(
@@ -300,7 +321,7 @@ class MockAIProvider(BaseAIProvider):
                     f"Structured Summary:\n"
                     f"• Customer: {cust_name}\n"
                     f"• Total Amount: ${amount_val} {currency_val}\n"
-                    f"• Due Date: In 14 days\n"
+                    f"• Due Date: In {due_days} days\n"
                     f"• Tax: $0.00\n\n"
                     f"This will create and send invoice through PayPal Sandbox after approval."
                 ),

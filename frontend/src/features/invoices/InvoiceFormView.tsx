@@ -458,8 +458,8 @@ export const InvoiceFormView: FC = () => {
             Type a natural billing instruction (e.g. <em>"Create a $500 invoice for John Smith for website development, due in seven days"</em>) to extract and auto-populate this form.
           </p>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
               <TextInput
                 value={fastDraftText}
                 onChange={(e) => setFastDraftText(e.target.value)}
@@ -576,7 +576,7 @@ export const InvoiceFormView: FC = () => {
             1. Client & Billing Parameters
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 20 }}>
             <div>
               <Select
                 label="CLIENT / CUSTOMER *"
@@ -695,7 +695,7 @@ export const InvoiceFormView: FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
               gap: 20,
               marginTop: 20,
             }}
@@ -768,14 +768,7 @@ export const InvoiceFormView: FC = () => {
                     position: 'relative',
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '2fr 1fr 1fr 1fr auto',
-                      gap: 12,
-                      alignItems: 'start',
-                    }}
-                  >
+                  <div className="payflow-line-item-grid">
                     <div>
                       <TextInput
                         label={`ITEM #${index + 1} NAME *`}
@@ -820,7 +813,7 @@ export const InvoiceFormView: FC = () => {
                       onChange={(e) => handleItemChange(index, 'tax', e.target.value)}
                     />
 
-                    <div style={{ paddingTop: 26, textAlign: 'right' }}>
+                    <div className="payflow-line-item-total" style={{ paddingTop: 26, textAlign: 'right' }}>
                       <div
                         style={{
                           fontSize: 11,
@@ -865,7 +858,7 @@ export const InvoiceFormView: FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
             gap: 24,
             marginBottom: 32,
           }}
@@ -931,14 +924,14 @@ export const InvoiceFormView: FC = () => {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 14 }}>
                 <span style={{ color: 'var(--color-sand)' }}>Subtotal:</span>
-                <span style={{ fontFamily: 'monospace' }}>
+                <span style={{ fontFamily: 'monospace', color: '#FAF7F2' }}>
                   {previewSubtotal.toFixed(2)} {currency}
                 </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, fontSize: 14 }}>
                 <span style={{ color: 'var(--color-sand)' }}>Tax Total:</span>
-                <span style={{ fontFamily: 'monospace' }}>
+                <span style={{ fontFamily: 'monospace', color: '#FAF7F2' }}>
                   {previewTax.toFixed(2)} {currency}
                 </span>
               </div>
@@ -987,6 +980,7 @@ export const InvoiceFormView: FC = () => {
             display: 'flex',
             justifyContent: 'flex-end',
             gap: 16,
+            flexWrap: 'wrap',
             borderTop: 'var(--border-hairline)',
             paddingTop: 24,
           }}

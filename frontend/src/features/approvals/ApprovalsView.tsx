@@ -316,8 +316,10 @@ export const ApprovalsView: FC = () => {
 
       {/* Tabs */}
       <div
+        className="payflow-tabs-scroll"
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           borderBottom: 'var(--border-hairline)',
           marginBottom: 24,
           gap: 4,
@@ -719,7 +721,7 @@ export const ApprovalsView: FC = () => {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
                     gap: 16,
                     marginBottom: 16,
                     fontSize: 13,

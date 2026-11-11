@@ -139,9 +139,9 @@ export const AnalyticsView: FC = () => {
           title="Receivables Analytics"
           subtitle="Timezone-aware aging schedules (0–7, 8–30, 31–60, 60+ days), per-currency totals, and factual AI audit summaries."
         />
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingTop: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingTop: '10px', flexWrap: 'wrap', maxWidth: '100%' }}>
           {/* Period Preset Selector */}
-          <div style={{ display: 'flex', border: 'var(--border-hairline)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', border: 'var(--border-hairline)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() => setPeriodPreset('30')}
@@ -360,7 +360,7 @@ export const AnalyticsView: FC = () => {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
                   gap: '16px',
                   marginBottom: '24px',
                 }}
@@ -432,7 +432,7 @@ export const AnalyticsView: FC = () => {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
                     gap: '12px',
                   }}
                 >

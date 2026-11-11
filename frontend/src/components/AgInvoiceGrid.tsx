@@ -266,7 +266,7 @@ export const AgInvoiceGrid: FC<AgInvoiceGridProps> = ({
             />
             AG Grid Pro Explorer
           </span>
-          <div style={{ width: 220 }}>
+          <div style={{ flex: '1 1 180px', maxWidth: 260, minWidth: 140 }}>
             <input
               type="text"
               placeholder="Quick search all columns..."
@@ -286,7 +286,7 @@ export const AgInvoiceGrid: FC<AgInvoiceGridProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Button
             variant="outline"
             size="sm"

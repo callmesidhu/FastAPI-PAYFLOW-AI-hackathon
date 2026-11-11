@@ -49,12 +49,14 @@ export const tokenStorage = {
 export class ApiError extends Error {
   public status: number;
   public detail: string;
+  public data?: unknown;
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, data?: unknown) {
     super(detail);
     this.name = 'ApiError';
     this.status = status;
     this.detail = detail;
+    this.data = data;
   }
 }
 
@@ -100,15 +102,31 @@ export async function apiClient<T>(
 
   if (!response.ok) {
     let errorDetail = `Request failed with status ${response.status}`;
+    let errJson: any = undefined;
     try {
-      const errJson = await response.json();
-      if (errJson && errJson.detail) {
-        errorDetail = errJson.detail;
+      errJson = await response.json();
+      if (errJson?.detail) {
+        if (typeof errJson.detail === 'string') {
+          errorDetail = errJson.detail;
+        } else if (Array.isArray(errJson.detail)) {
+          errorDetail = errJson.detail
+            .map((d: any) => {
+              const field = Array.isArray(d?.loc) ? d.loc.slice(-1)[0] : '';
+              return field ? `${field}: ${d?.msg || 'Invalid value'}` : d?.msg || JSON.stringify(d);
+            })
+            .join('; ');
+        } else {
+          errorDetail = JSON.stringify(errJson.detail);
+        }
+      } else if (typeof errJson?.message === 'string') {
+        errorDetail = errJson.message;
+      } else if (typeof errJson?.error?.message === 'string') {
+        errorDetail = errJson.error.message;
       }
     } catch {
       // Non-JSON error body
     }
-    throw new ApiError(response.status, errorDetail);
+    throw new ApiError(response.status, errorDetail, errJson);
   }
 
   // Handle 204 No Content
