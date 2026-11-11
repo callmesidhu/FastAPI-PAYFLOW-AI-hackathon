@@ -13,6 +13,7 @@ Verifies:
 
 from datetime import date, timedelta
 from decimal import Decimal
+import json
 import pytest
 import respx
 from httpx import ASGITransport, AsyncClient, Response
@@ -559,5 +560,99 @@ async def test_cross_user_isolation_on_send(
         res = await client.post(f"/api/paypal/invoices/{created_invoice.internal_id}/send")
         assert res.status_code == 404
         assert "Invoice not found" in res.json()["detail"]
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_send_invoice_repairs_unassociated_invoicer_email_422(
+    mock_db: MockDatabase,
+    user_a: User,
+    sample_customer: Customer,
+    created_invoice: Invoice,
+    monkeypatch,
+):
+    """If PayPal /send rejects 422 USER_NOT_FOUND for invoicer email, strip it via PUT and retry."""
+    monkeypatch.setattr(settings, "PAYPAL_CLIENT_ID", "sandbox-client-id-send")
+    monkeypatch.setattr(settings, "PAYPAL_CLIENT_SECRET", "sandbox-client-secret-send")
+
+    await mock_db.users.insert_one(user_a.model_dump())
+    await mock_db.customers.insert_one(sample_customer.model_dump())
+    await mock_db.invoices.insert_one(created_invoice.model_dump())
+
+    snapshot = compute_invoice_payload_snapshot(created_invoice)
+    appr_hash = compute_payload_hash(snapshot)
+    approval = Approval(
+        id="appr-send-repair",
+        user_id=user_a.id,
+        action_type=ActionType.SEND_PAYPAL_INVOICE,
+        resource_type="invoice",
+        resource_id=created_invoice.internal_id,
+        payload_snapshot=snapshot,
+        payload_hash=appr_hash,
+        status=ApprovalStatus.APPROVED,
+    )
+    await mock_db.approvals.insert_one(approval.model_dump())
+
+    respx.post(f"{settings.PAYPAL_BASE_URL}/v1/oauth2/token").mock(
+        return_value=Response(200, json={"access_token": "ACCESS_TOKEN_REPAIR", "expires_in": 3600})
+    )
+    draft_url = f"{settings.PAYPAL_BASE_URL}/v2/invoicing/invoices/{created_invoice.paypal_invoice_id}"
+    respx.get(draft_url).mock(
+        return_value=Response(
+            200,
+            json={
+                "id": created_invoice.paypal_invoice_id,
+                "status": "DRAFT",
+                "invoicer": {"business_name": user_a.business_name, "email_address": user_a.email},
+                "primary_recipients": [{"billing_info": {"email_address": sample_customer.email}}],
+            },
+        )
+    )
+    mock_put = respx.put(draft_url).mock(
+        return_value=Response(200, json={"id": created_invoice.paypal_invoice_id, "status": "DRAFT"})
+    )
+    mock_send = respx.post(f"{draft_url}/send").mock(
+        side_effect=[
+            Response(
+                422,
+                json={
+                    "name": "UNPROCESSABLE_ENTITY",
+                    "details": [
+                        {
+                            "issue": "USER_NOT_FOUND",
+                            "description": "User is not associated with paypal based on invoicer email.",
+                        }
+                    ],
+                },
+            ),
+            Response(200, json={"links": []}),
+        ]
+    )
+
+    app.dependency_overrides[get_db] = lambda: mock_db
+    token = create_access_token(subject=user_a.id)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as client:
+        res = await client.post(
+            f"/api/paypal/invoices/{created_invoice.internal_id}/send",
+            json={"approval_id": approval.id},
+        )
+        assert res.status_code == 200
+        assert res.json()["status"] == "sent"
+
+    assert mock_put.called
+    assert "email_address" not in json.loads(mock_put.calls.last.request.content)["invoicer"]
+    assert mock_send.call_count == 2
+    assert mock_send.calls[1].request.headers.get("PayPal-Request-Id", "").endswith("-repaired")
+
+    inv_after = await mock_db.invoices.find_one({"internal_id": created_invoice.internal_id})
+    assert inv_after is not None
+    assert inv_after["status"] == InvoiceStatus.SENT.value
 
     app.dependency_overrides.clear()

@@ -14,6 +14,7 @@ Verifies:
 
 from datetime import date, timedelta
 from decimal import Decimal
+import json
 import pytest
 import respx
 from httpx import ASGITransport, AsyncClient, Response
@@ -31,6 +32,7 @@ from app.services.approval_service import compute_invoice_payload_snapshot
 from app.services.paypal_service import (
     PayPalService,
     build_paypal_invoice_payload,
+    extract_paypal_invoice_id,
     extract_paypal_invoice_url,
     paypal_service,
 )
@@ -366,6 +368,8 @@ async def test_create_paypal_invoice_success_and_persisted(
     last_req = mock_create_route.calls.last.request
     assert last_req.headers.get("PayPal-Request-Id") == f"payflow-create-{sample_invoice.internal_id}"
     assert "Bearer SANDBOX_MOCK_ACCESS_TOKEN_ABC" in last_req.headers.get("Authorization", "")
+    sent_payload = json.loads(last_req.content)
+    assert "email_address" not in sent_payload["invoicer"]
 
     # Invariant: Database persistence verification
     inv_after = await mock_db.invoices.find_one({"internal_id": sample_invoice.internal_id})
@@ -541,5 +545,260 @@ async def test_cross_user_isolation(
         )
         assert res.status_code == 404
         assert "Invoice not found" in res.json()["detail"]
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_paypal_hateoas_link_id_extraction_and_creation(
+    mock_db: MockDatabase,
+    user_a: User,
+    sample_customer: Customer,
+    sample_invoice: Invoice,
+    monkeypatch,
+):
+    """Creating a PayPal invoice handles minimal HATEOAS 'self' link responses lacking a top-level 'id'."""
+    monkeypatch.setattr(settings, "PAYPAL_CLIENT_ID", "sandbox-client-id-xyz")
+    monkeypatch.setattr(settings, "PAYPAL_CLIENT_SECRET", "sandbox-client-secret-xyz")
+
+    assert extract_paypal_invoice_id({
+        "rel": "self",
+        "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-HATEOAS-0001",
+        "method": "GET",
+    }) == "INV2-HATEOAS-0001"
+
+    await mock_db.users.insert_one(user_a.model_dump())
+    await mock_db.customers.insert_one(sample_customer.model_dump())
+    await mock_db.invoices.insert_one(sample_invoice.model_dump())
+
+    snapshot = compute_invoice_payload_snapshot(sample_invoice)
+    approval = Approval(
+        user_id=user_a.id,
+        action_type=ActionType.CREATE_PAYPAL_INVOICE,
+        resource_type="invoice",
+        resource_id=sample_invoice.internal_id,
+        payload_snapshot=snapshot,
+        payload_hash=compute_payload_hash(snapshot),
+        status=ApprovalStatus.APPROVED,
+    )
+    await mock_db.approvals.insert_one(approval.model_dump())
+
+    respx.post(f"{settings.PAYPAL_BASE_URL}/v1/oauth2/token").mock(
+        return_value=Response(200, json={"access_token": "TOKEN_XYZ", "expires_in": 3600})
+    )
+    respx.post(f"{settings.PAYPAL_BASE_URL}/v2/invoicing/invoices").mock(
+        return_value=Response(
+            201,
+            json={
+                "rel": "self",
+                "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-HATEOAS-0001",
+                "method": "GET",
+            },
+        )
+    )
+    respx.get(f"{settings.PAYPAL_BASE_URL}/v2/invoicing/invoices/INV2-HATEOAS-0001").mock(
+        return_value=Response(
+            200,
+            json={
+                "id": "INV2-HATEOAS-0001",
+                "status": "DRAFT",
+                "detail": {
+                    "metadata": {
+                        "recipient_view_url": "https://www.sandbox.paypal.com/invoice/p/#HATEOAS0001"
+                    }
+                },
+            },
+        )
+    )
+
+    app.dependency_overrides[get_db] = lambda: mock_db
+    token = create_access_token(subject=user_a.id)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as client:
+        res = await client.post(
+            "/api/paypal/invoices",
+            json={"invoice_id": sample_invoice.internal_id, "approval_id": approval.id},
+        )
+        assert res.status_code == 201
+        data = res.json()
+        assert data["paypal_invoice_id"] == "INV2-HATEOAS-0001"
+        assert "INV2-HATEOAS-0001" in data["paypal_invoice_url"] or "HATEOAS0001" in data["paypal_invoice_url"]
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_paypal_duplicate_422_reconciles_matching_owner_invoice(
+    mock_db: MockDatabase,
+    user_a: User,
+    sample_customer: Customer,
+    sample_invoice: Invoice,
+    monkeypatch,
+):
+    """HTTP 422 DUPLICATE_INVOICE_NUMBER safely reconciles when matching user/recipient/total invoice already exists."""
+    monkeypatch.setattr(settings, "PAYPAL_CLIENT_ID", "sandbox-client-id-xyz")
+    monkeypatch.setattr(settings, "PAYPAL_CLIENT_SECRET", "sandbox-client-secret-xyz")
+
+    await mock_db.users.insert_one(user_a.model_dump())
+    await mock_db.customers.insert_one(sample_customer.model_dump())
+    await mock_db.invoices.insert_one(sample_invoice.model_dump())
+
+    snapshot = compute_invoice_payload_snapshot(sample_invoice)
+    approval = Approval(
+        user_id=user_a.id,
+        action_type=ActionType.CREATE_PAYPAL_INVOICE,
+        resource_type="invoice",
+        resource_id=sample_invoice.internal_id,
+        payload_snapshot=snapshot,
+        payload_hash=compute_payload_hash(snapshot),
+        status=ApprovalStatus.APPROVED,
+    )
+    await mock_db.approvals.insert_one(approval.model_dump())
+
+    respx.post(f"{settings.PAYPAL_BASE_URL}/v1/oauth2/token").mock(
+        return_value=Response(200, json={"access_token": "TOKEN_XYZ", "expires_in": 3600})
+    )
+    respx.post(f"{settings.PAYPAL_BASE_URL}/v2/invoicing/invoices").mock(
+        return_value=Response(
+            422,
+            json={
+                "name": "UNPROCESSABLE_ENTITY",
+                "message": "The requested action could not be performed.",
+                "details": [{"issue": "DUPLICATE_INVOICE_NUMBER", "description": "Invoice number is duplicate."}],
+            },
+        )
+    )
+    respx.post(f"{settings.PAYPAL_BASE_URL}/v2/invoicing/search-invoices").mock(
+        return_value=Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "id": "INV2-RECOVERED-9999",
+                        "detail": {
+                            "invoice_number": sample_invoice.invoice_number,
+                            "metadata": {"recipient_view_url": "https://www.sandbox.paypal.com/invoice/p/#RECOVERED9999"},
+                        },
+                        "invoicer": {"email_address": user_a.email},
+                        "primary_recipients": [{"billing_info": {"email_address": sample_customer.email}}],
+                        "amount": {"value": f"{sample_invoice.total:.2f}", "currency_code": "USD"},
+                    }
+                ]
+            },
+        )
+    )
+
+    app.dependency_overrides[get_db] = lambda: mock_db
+    token = create_access_token(subject=user_a.id)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as client:
+        res = await client.post(
+            "/api/paypal/invoices",
+            json={"invoice_id": sample_invoice.internal_id, "approval_id": approval.id},
+        )
+        assert res.status_code == 201
+        data = res.json()
+        assert data["paypal_invoice_id"] == "INV2-RECOVERED-9999"
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_paypal_duplicate_422_disambiguates_cross_tenant_number(
+    mock_db: MockDatabase,
+    user_a: User,
+    sample_customer: Customer,
+    sample_invoice: Invoice,
+    monkeypatch,
+):
+    """If 422 DUPLICATE_INVOICE_NUMBER belongs to another user, retry with tenant-scoped number."""
+    monkeypatch.setattr(settings, "PAYPAL_CLIENT_ID", "sandbox-client-id-xyz")
+    monkeypatch.setattr(settings, "PAYPAL_CLIENT_SECRET", "sandbox-client-secret-xyz")
+
+    await mock_db.users.insert_one(user_a.model_dump())
+    await mock_db.customers.insert_one(sample_customer.model_dump())
+    sample_invoice.status = InvoiceStatus.PENDING_APPROVAL
+    await mock_db.invoices.insert_one(sample_invoice.model_dump())
+
+    snapshot = compute_invoice_payload_snapshot(sample_invoice)
+    approval = Approval(
+        id="appr-test-cross-tenant-dup",
+        user_id=user_a.id,
+        action_type=ActionType.CREATE_PAYPAL_INVOICE,
+        resource_type="invoice",
+        resource_id=sample_invoice.internal_id,
+        payload_snapshot=snapshot,
+        payload_hash=compute_payload_hash(snapshot),
+        status=ApprovalStatus.APPROVED,
+    )
+    await mock_db.approvals.insert_one(approval.model_dump())
+
+    respx.post(f"{settings.PAYPAL_BASE_URL}/v1/oauth2/token").mock(
+        return_value=Response(200, json={"access_token": "TOKEN_XYZ", "expires_in": 3600})
+    )
+    mock_create = respx.post(f"{settings.PAYPAL_BASE_URL}/v2/invoicing/invoices").mock(
+        side_effect=[
+            Response(
+                422,
+                json={
+                    "name": "UNPROCESSABLE_ENTITY",
+                    "details": [{"issue": "DUPLICATE_INVOICE_NUMBER", "description": "Duplicate."}],
+                },
+            ),
+            Response(
+                201,
+                json={
+                    "id": "INV2-DISAMBIG-2026",
+                    "links": [{"rel": "payer-view", "href": "https://www.sandbox.paypal.com/invoice/p/#INV2-DISAMBIG-2026"}],
+                },
+            ),
+        ]
+    )
+    respx.post(f"{settings.PAYPAL_BASE_URL}/v2/invoicing/search-invoices").mock(
+        return_value=Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "id": "INV2-OTHER-TENANT",
+                        "detail": {"invoice_number": sample_invoice.invoice_number},
+                        "invoicer": {"email_address": "other.tenant@example.com"},
+                        "primary_recipients": [{"billing_info": {"email_address": "other.buyer@example.com"}}],
+                        "amount": {"value": f"{sample_invoice.total:.2f}", "currency_code": "USD"},
+                    }
+                ]
+            },
+        )
+    )
+
+    app.dependency_overrides[get_db] = lambda: mock_db
+    token = create_access_token(subject=user_a.id)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as client:
+        res = await client.post(
+            "/api/paypal/invoices",
+            json={"invoice_id": sample_invoice.internal_id, "approval_id": approval.id},
+        )
+        assert res.status_code == 201
+        assert res.json()["paypal_invoice_id"] == "INV2-DISAMBIG-2026"
+
+    assert mock_create.call_count == 2
+    retry_payload = json.loads(mock_create.calls[1].request.content)
+    assert retry_payload["detail"]["invoice_number"].startswith(f"{sample_invoice.invoice_number}-")
 
     app.dependency_overrides.clear()
