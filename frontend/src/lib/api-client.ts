@@ -89,10 +89,34 @@ export async function apiClient<T>(
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${normalizedEndpoint}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  // Guard against hung connections leaving UI controls stuck in loading state
+  const controller = new AbortController();
+  const externalSignal = options.signal;
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+  const timeoutId = setTimeout(() => controller.abort(), 40000);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError' && !externalSignal?.aborted) {
+      throw new ApiError(408, 'Request timed out waiting for the server. Please verify the backend is running and try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onExternalAbort);
+    }
+  }
 
   if (response.status === 401) {
     tokenStorage.clearToken();

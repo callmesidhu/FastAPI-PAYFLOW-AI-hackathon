@@ -34,7 +34,12 @@ from app.schemas.paypal import (
     PayPalInvoiceSendResponse,
 )
 from app.services.approval_service import compute_invoice_payload_snapshot
-from app.services.paypal_service import PayPalAPIError, extract_paypal_invoice_url, paypal_service
+from app.services.paypal_service import (
+    PayPalAPIError,
+    extract_paypal_invoice_id,
+    extract_paypal_invoice_url,
+    paypal_service,
+)
 
 
 
@@ -43,22 +48,21 @@ from app.services.paypal_service import PayPalAPIError, extract_paypal_invoice_u
 # ---------------------------------------------------------------------------
 
 async def generate_invoice_number(db: AsyncIOMotorDatabase, user_id: str) -> str:
-    """Generate a sequential, human-readable invoice reference unique per user.
+    """Generate a sequential, human-readable invoice reference unique across PayPal Sandbox.
 
     Format: INV-{YEAR}-{NNNN}  e.g. INV-2026-0042
 
     Strategy:
-    - Base the starting candidate on the total invoice count (fast path with no gaps).
-    - Loop with collision detection to handle deletions or manual numbering gaps.
-    - Does NOT rely on timestamps alone — the sequence is deterministic per user.
+    - Shared PayPal Sandbox accounts enforce unique invoice_number globally, so check
+      uniqueness across the collection rather than only per user_id.
     """
     current_year = datetime.now(timezone.utc).year
-    count = await db.invoices.count_documents({"user_id": user_id})
+    count = await db.invoices.count_documents({})
     candidate_num = count + 1
 
     while True:
         candidate_str = f"INV-{current_year}-{candidate_num:04d}"
-        existing = await db.invoices.find_one({"user_id": user_id, "invoice_number": candidate_str})
+        existing = await db.invoices.find_one({"invoice_number": candidate_str})
         if not existing:
             return candidate_str
         candidate_num += 1
@@ -572,6 +576,41 @@ async def delete_invoice_draft(
     return invoice_id
 
 
+async def _reconcile_duplicate_paypal_invoice(
+    invoice: Invoice,
+    customer: Customer,
+    user: User,
+    invoice_number: Optional[str] = None,
+) -> Optional[dict]:
+    """Recover an orphaned PayPal Sandbox invoice matching exact number, owner, recipient, and amount."""
+    lookup_number = invoice_number or invoice.invoice_number
+    candidates = await paypal_service.search_invoice_by_number(lookup_number)
+    expected_total = f"{invoice.total:.2f}"
+    expected_user_email = (user.email or "").strip().lower()
+    expected_business = (user.business_name or user.name or "").strip().lower()
+    expected_cust_email = (customer.email or "").strip().lower()
+
+    for item in candidates:
+        detail = item.get("detail") or {}
+        if detail.get("invoice_number") != lookup_number:
+            continue
+        invoicer = item.get("invoicer") or {}
+        invoicer_email = (invoicer.get("email_address") or "").strip().lower()
+        invoicer_business = (invoicer.get("business_name") or "").strip().lower()
+        owner_matches = (
+            (bool(expected_user_email) and invoicer_email == expected_user_email)
+            or (not invoicer_email and bool(expected_business) and invoicer_business == expected_business)
+        )
+        recipient_emails = [
+            ((rec.get("billing_info") or {}).get("email_address") or "").strip().lower()
+            for rec in (item.get("primary_recipients") or [])
+        ]
+        amount_val = str((item.get("amount") or {}).get("value") or "")
+        if owner_matches and expected_cust_email in recipient_emails and amount_val == expected_total:
+            return item
+    return None
+
+
 async def create_approved_paypal_invoice(
     db: AsyncIOMotorDatabase,
     user: User,
@@ -672,14 +711,46 @@ async def create_approved_paypal_invoice(
             idempotency_key=stable_key,
         )
     except PayPalAPIError as err:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err.message)
+        is_duplicate_num = any(d.get("issue") == "DUPLICATE_INVOICE_NUMBER" for d in err.details)
+        paypal_res = None
+        if err.status_code == 422 and is_duplicate_num:
+            paypal_res = await _reconcile_duplicate_paypal_invoice(invoice, customer, user)
+            if not paypal_res:
+                # Shared PayPal Sandbox accounts reject identical numbers across tenants;
+                # retry with a deterministic tenant-scoped PayPal reference while preserving Approval hash.
+                alt_num = f"{invoice.invoice_number}-{invoice.internal_id.replace('-', '')[:4].upper()}"[:25]
+                try:
+                    paypal_res = await paypal_service.create_invoice(
+                        invoice=invoice,
+                        customer=customer,
+                        user=user,
+                        idempotency_key=f"{stable_key}-alt",
+                        invoice_number_override=alt_num,
+                    )
+                except PayPalAPIError as retry_err:
+                    retry_dup = any(d.get("issue") == "DUPLICATE_INVOICE_NUMBER" for d in retry_err.details)
+                    if retry_err.status_code == 422 and retry_dup:
+                        paypal_res = await _reconcile_duplicate_paypal_invoice(
+                            invoice, customer, user, invoice_number=alt_num
+                        )
+                    if not paypal_res:
+                        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=retry_err.message)
+        if not paypal_res:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err.message)
 
-    paypal_id = paypal_res.get("id")
+    paypal_id = extract_paypal_invoice_id(paypal_res)
     if not paypal_id:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="PayPal Sandbox response did not include a valid invoice identifier.",
         )
+
+    # Enrich URL/metadata if PayPal returned only a minimal HATEOAS link
+    if not paypal_res.get("links") and not (paypal_res.get("detail") or {}).get("metadata"):
+        try:
+            paypal_res = await paypal_service.get_invoice(paypal_id)
+        except Exception:
+            pass
 
     paypal_url = extract_paypal_invoice_url(paypal_res, paypal_id)
 

@@ -22,7 +22,7 @@ from app.agents.security import (
     scrub_secrets,
     wrap_untrusted_content,
 )
-from app.agents.tools import ALLOWLISTED_TOOLS
+from app.agents.tools import ALLOWLISTED_TOOLS, TOOL_DECLARATIONS
 from app.core.logging import logger
 from app.models.user import User
 from app.schemas.ai import (
@@ -54,6 +54,61 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+_READ_SUMMARY_TOOLS = {
+    "get_receivables_summary",
+    "list_invoices",
+    "get_overdue_invoices",
+    "get_invoice_detail",
+    "prepare_reminder_draft",
+}
+
+
+def _check_policy_guardrail(raw_message: str) -> Optional[str]:
+    """Deterministically refuse prompt-injection, approval bypass, or silent financial mutation attempts."""
+    lower = raw_message.lower()
+
+    bypass_cues = (
+        "without approval",
+        "bypass approval",
+        "execute paypal directly",
+        "approve directly",
+        "system prompt override",
+        "ignore previous instructions",
+        "ignore all previous instructions",
+        "disregard system prompt",
+    )
+    if any(cue in lower for cue in bypass_cues):
+        return (
+            "Per security policy, I cannot approve or execute PayPal transactions directly or bypass authorization controls. "
+            "All invoice dispatches and payment reminders must go through the Approval Center for human review."
+        )
+
+    if "silently change" in lower or (
+        "without asking" in lower
+        and any(field in lower for field in ("amount", "price", "total", "currency", "tax", "due date", "customer"))
+    ):
+        return (
+            "Core financial invariants—including invoice amounts, taxes, currencies, due dates, and customer details—"
+            "cannot be modified silently without explicit user confirmation."
+        )
+
+    return None
+
+
+def _format_tool_fallback_summary(executed_tool_calls: List[Dict[str, Any]]) -> str:
+    """Format a deterministic readable fallback if a follow-up synthesis turn yields no text."""
+    if not executed_tool_calls:
+        return "I have processed your request."
+    last = executed_tool_calls[-1]
+    name = last.get("name", "tool")
+    res = last.get("result") or {}
+    if isinstance(res, dict) and "message" in res:
+        return str(res["message"])
+    if isinstance(res, dict) and "body" in res and "subject" in res:
+        return f"**{res['subject']}**\n\n{res['body']}\n\n*{res.get('preview_note', '')}*"
+    return f"Completed `{name}`:\n\n```json\n{json.dumps(res, indent=2, default=str)}\n```"
+
+
 class AIAssistantOrchestrator:
     """Orchestrator coordinating AI provider completions, tool dispatch, and safety policies."""
 
@@ -79,7 +134,7 @@ class AIAssistantOrchestrator:
         conv_doc = await db.ai_conversations.find_one({"id": conv_id, "user_id": user.id})
         history: List[Dict[str, Any]] = conv_doc.get("messages", []) if conv_doc else []
 
-        # 2. Sanitize and scrub user message
+        # 2. Enforce deterministic policy guardrails before calling any provider
         sanitized_input = scrub_secrets(sanitize_untrusted_input(user_message))
         history.append({
             "role": "user",
@@ -87,11 +142,28 @@ class AIAssistantOrchestrator:
             "timestamp": utc_now().isoformat(),
         })
 
+        guardrail_refusal = _check_policy_guardrail(user_message)
+        if guardrail_refusal:
+            history.append({
+                "role": "assistant",
+                "content": guardrail_refusal,
+                "timestamp": utc_now().isoformat(),
+            })
+            await self._save_conversation(db, user.id, conv_id, history)
+            return AIChatResponse(
+                conversation_id=conv_id,
+                message=guardrail_refusal,
+                tool_calls=[],
+                clarification_needed=False,
+            )
+
         # Track execution context
         executed_tool_calls: List[Dict[str, Any]] = []
+        seen_signatures: set[str] = set()
         preview_data: Optional[Dict[str, Any]] = None
         approval_requested = False
         approval_id: Optional[str] = None
+        synthesis_only = False
 
         turn_count = 0
         final_message = ""
@@ -101,13 +173,18 @@ class AIAssistantOrchestrator:
 
             # Prepare message payloads for the provider
             provider_messages = [
-                {"role": m["role"], "content": m.get("content", "")}
+                {
+                    "role": m["role"],
+                    "name": m.get("name"),
+                    "content": m.get("content", ""),
+                }
                 for m in history[-10:]  # Keep last 10 messages for context
             ]
 
             # Request completion from configured AI provider
             completion = await self.provider.generate_response(
                 messages=provider_messages,
+                tools=None if synthesis_only else TOOL_DECLARATIONS,
                 system_instruction=SYSTEM_PROMPT,
             )
 
@@ -119,18 +196,29 @@ class AIAssistantOrchestrator:
                 return AIChatResponse(
                     conversation_id=conv_id,
                     message=final_message,
+                    tool_calls=executed_tool_calls,
                     clarification_needed=True,
                 )
 
             # If no tool calls were generated, model produced final conversational output
             if not completion.tool_calls:
-                final_message = completion.content or "I have processed your request."
+                if completion.finish_reason == "error" and executed_tool_calls:
+                    final_message = _format_tool_fallback_summary(executed_tool_calls)
+                else:
+                    final_message = completion.content or _format_tool_fallback_summary(executed_tool_calls)
                 history.append({"role": "assistant", "content": final_message, "timestamp": utc_now().isoformat()})
                 break
 
             # Process tool calls
             tool_outputs = []
+            executed_new_tool = False
             for call in completion.tool_calls:
+                sig = f"{call.name}:{json.dumps(call.arguments, sort_keys=True, default=str)}"
+                if sig in seen_signatures:
+                    continue
+                seen_signatures.add(sig)
+                executed_new_tool = True
+
                 tool_func = ALLOWLISTED_TOOLS.get(call.name)
                 if not tool_func:
                     logger.warning("Attempted invocation of non-allowlisted tool: %s", call.name)
@@ -150,9 +238,9 @@ class AIAssistantOrchestrator:
                 })
 
                 # Check if this created a preview or approval request
-                if call.name == "create_invoice_draft" and "invoice_id" in tool_res:
+                if call.name == "create_invoice_draft" and isinstance(tool_res, dict) and "invoice_id" in tool_res:
                     preview_data = tool_res
-                if call.name == "request_approval" and "approval_id" in tool_res:
+                if call.name == "request_approval" and isinstance(tool_res, dict) and "approval_id" in tool_res:
                     approval_requested = True
                     approval_id = tool_res["approval_id"]
 
@@ -163,9 +251,14 @@ class AIAssistantOrchestrator:
                     "timestamp": utc_now().isoformat(),
                 })
 
+            if not executed_new_tool:
+                final_message = completion.content or _format_tool_fallback_summary(executed_tool_calls)
+                history.append({"role": "assistant", "content": final_message, "timestamp": utc_now().isoformat()})
+                break
+
             history.extend(tool_outputs)
 
-            # Synthesize final summary response after tool execution
+            # Synthesize final summary immediately for draft creation, approval request, or pre-rendered provider text
             if preview_data:
                 inv_num = preview_data.get('invoice_number', 'Draft')
                 cust_name = preview_data.get('customer_name', 'Client')
@@ -184,16 +277,27 @@ class AIAssistantOrchestrator:
                     f"This will create and send invoice {inv_num} through PayPal Sandbox after approval. "
                     f"You can review or edit this draft before authorizing dispatch."
                 )
-            elif approval_requested:
+                history.append({"role": "assistant", "content": final_message, "timestamp": utc_now().isoformat()})
+                break
+            if approval_requested:
                 final_message = (
                     f"An authorization request has been submitted to your Approval Center (Ref: {approval_id}). "
                     f"This will create and send invoice through PayPal Sandbox after approval."
                 )
-            else:
-                final_message = completion.content or "I have retrieved the requested information."
+                history.append({"role": "assistant", "content": final_message, "timestamp": utc_now().isoformat()})
+                break
+            if completion.content:
+                final_message = completion.content
+                history.append({"role": "assistant", "content": final_message, "timestamp": utc_now().isoformat()})
+                break
 
+            # Otherwise run one synthesis pass so the LLM turns read tool JSON into human prose
+            if all(out["name"] in _READ_SUMMARY_TOOLS for out in tool_outputs):
+                synthesis_only = True
+
+        if not final_message:
+            final_message = _format_tool_fallback_summary(executed_tool_calls)
             history.append({"role": "assistant", "content": final_message, "timestamp": utc_now().isoformat()})
-            break
 
         await self._save_conversation(db, user.id, conv_id, history)
 

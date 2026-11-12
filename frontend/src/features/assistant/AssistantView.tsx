@@ -70,10 +70,14 @@ export const AssistantView: FC = () => {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length === 0 && !loading) return;
+    const container = chatMessagesRef.current;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
   }, [messages, loading]);
 
   const sendMessage = async (textToSend: string) => {
@@ -161,6 +165,8 @@ export const AssistantView: FC = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '8px',
           }}
         >
           <span>{error}</span>
@@ -187,6 +193,7 @@ export const AssistantView: FC = () => {
       >
         {/* Messages Body */}
         <div
+          ref={chatMessagesRef}
           className="payflow-chat-messages"
           style={{
             flex: 1,
@@ -581,8 +588,6 @@ export const AssistantView: FC = () => {
               Consulting authoritative accounts receivable ledger...
             </div>
           )}
-
-          <div ref={chatEndRef} />
         </div>
 
         {/* Input Form */}

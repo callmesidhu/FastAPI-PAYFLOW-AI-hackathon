@@ -36,9 +36,10 @@ interface ReminderItem {
   invoice_number: string;
   customer_name: string;
   channel: string;
-  scheduled_date: string;
+  stage: string;
   status: string;
-  tone: string;
+  created_at: string;
+  sent_at?: string | null;
 }
 
 interface CalendarEvent {
@@ -72,7 +73,7 @@ export const BryntumInvoiceCalendar: FC = () => {
         setLoading(true);
         const [invoicesRes, remindersRes] = await Promise.allSettled([
           apiClient<{ items: InvoiceItem[] }>('/api/invoices?page=1&page_size=100'),
-          apiClient<{ items: ReminderItem[] }>('/api/reminders?page=1&page_size=50'),
+          apiClient<{ items: ReminderItem[] }>('/api/reminders?limit=50'),
         ]);
 
         if (isMounted) {
@@ -122,14 +123,16 @@ export const BryntumInvoiceCalendar: FC = () => {
       });
     }
 
-    // Map Reminders by Scheduled Follow-up Date
+    // Map Reminders by Sent / Created Follow-up Date
     for (const rem of reminders) {
-      if (!rem.scheduled_date) continue;
+      const targetDate = rem.sent_at || rem.created_at;
+      if (!targetDate) continue;
+      const dateStr = targetDate.split('T')[0] || targetDate;
       events.push({
         id: `rem-${rem.id}`,
-        name: `Follow-up: ${rem.customer_name} (${rem.tone} ${rem.channel})`,
-        startDate: rem.scheduled_date.split('T')[0] || rem.scheduled_date,
-        endDate: rem.scheduled_date.split('T')[0] || rem.scheduled_date,
+        name: `Follow-up: ${rem.customer_name} (${rem.stage} · ${rem.channel})`,
+        startDate: dateStr,
+        endDate: dateStr,
         allDay: true,
         eventColor: '#4A4036',
         invoiceId: rem.invoice_id,
@@ -164,7 +167,7 @@ export const BryntumInvoiceCalendar: FC = () => {
         title="Receivables Due Date Calendar"
         subtitle="Visualize receivables aging, statutory due dates, and scheduled customer follow-up cadences in real time."
         actions={
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Button variant="secondary" onClick={() => navigate('/invoices')}>
               INVOICE DIRECTORY →
             </Button>
@@ -184,12 +187,12 @@ export const BryntumInvoiceCalendar: FC = () => {
           justifyContent: 'space-between',
           gap: '12px',
           padding: '14px 18px',
-          backgroundColor: 'var(--color-bg-secondary)',
-          border: '1px solid var(--border-hairline)',
+          backgroundColor: 'var(--color-cream)',
+          border: 'var(--border-hairline)',
           borderRadius: 'var(--radius-sm)',
         }}
       >
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span
             style={{
               fontFamily: 'var(--font-sans)',
@@ -197,7 +200,7 @@ export const BryntumInvoiceCalendar: FC = () => {
               fontWeight: 600,
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
-              color: 'var(--color-text-muted)',
+              color: 'var(--color-muted)',
               marginRight: '8px',
             }}
           >
@@ -217,7 +220,7 @@ export const BryntumInvoiceCalendar: FC = () => {
                   fontWeight: 600,
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
-                  border: isActive ? '1px solid var(--color-ink)' : '1px solid var(--border-hairline)',
+                  border: isActive ? '1px solid var(--color-ink)' : 'var(--border-hairline)',
                   backgroundColor: isActive ? 'var(--color-ink)' : 'transparent',
                   color: isActive ? 'var(--color-bg)' : 'var(--color-ink)',
                   cursor: 'pointer',
@@ -235,7 +238,7 @@ export const BryntumInvoiceCalendar: FC = () => {
         </div>
 
         {/* Legend */}
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '12px', flexWrap: 'wrap' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: '10px', height: '10px', backgroundColor: '#8C4A3F', display: 'inline-block' }} />
             Overdue
@@ -258,11 +261,11 @@ export const BryntumInvoiceCalendar: FC = () => {
       {/* Main Bryntum Calendar Container */}
       <div
         style={{
-          border: '1px solid var(--border-hairline)',
+          border: 'var(--border-hairline)',
           borderRadius: 'var(--radius-sm)',
           backgroundColor: '#FFFFFF',
-          minHeight: '650px',
-          height: '750px',
+          minHeight: '500px',
+          height: 'clamp(500px, 72vh, 750px)',
           boxShadow: 'var(--shadow-subtle)',
           overflow: 'hidden',
           position: 'relative',
@@ -275,8 +278,8 @@ export const BryntumInvoiceCalendar: FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: 'var(--color-bg-secondary)',
-              color: 'var(--color-text-muted)',
+              backgroundColor: 'var(--color-cream)',
+              color: 'var(--color-muted)',
               fontFamily: 'var(--font-sans)',
               fontSize: '13px',
               letterSpacing: '0.05em',
@@ -309,25 +312,25 @@ export const BryntumInvoiceCalendar: FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
           gap: '16px',
         }}
       >
         <div
           style={{
             padding: '16px',
-            backgroundColor: 'var(--color-bg-secondary)',
-            border: '1px solid var(--border-hairline)',
+            backgroundColor: 'var(--color-cream)',
+            border: 'var(--border-hairline)',
             borderRadius: 'var(--radius-sm)',
           }}
         >
-          <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
+          <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-muted)' }}>
             BRYNTUM SPONSOR INTEGRATION
           </div>
           <div style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 600, marginTop: '4px' }}>
             High-Performance Scheduling
           </div>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '6px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '12px', color: 'var(--color-muted)', marginTop: '6px', lineHeight: 1.5 }}>
             Powered by <strong>@bryntum/calendar-react</strong> with native Month, Week, and Agenda rendering, dynamic status color coding, and direct invoice routing.
           </p>
         </div>
@@ -335,18 +338,18 @@ export const BryntumInvoiceCalendar: FC = () => {
         <div
           style={{
             padding: '16px',
-            backgroundColor: 'var(--color-bg-secondary)',
-            border: '1px solid var(--border-hairline)',
+            backgroundColor: 'var(--color-cream)',
+            border: 'var(--border-hairline)',
             borderRadius: 'var(--radius-sm)',
           }}
         >
-          <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
+          <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-muted)' }}>
             AUTOMATED REMINDER TIMELINES
           </div>
           <div style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 600, marginTop: '4px' }}>
             Human-in-the-Loop Follow-ups
           </div>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '6px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '12px', color: 'var(--color-muted)', marginTop: '6px', lineHeight: 1.5 }}>
             Scheduled follow-ups synchronize with the Approval Center. No reminders are dispatched without explicit merchant authorization.
           </p>
         </div>

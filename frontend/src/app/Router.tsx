@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from 'react';
+import { useEffect, type FC, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { LoginView } from '../features/auth/LoginView';
@@ -21,6 +21,10 @@ const AuthenticatedLayoutWrapper: FC<{ children: ReactNode }> = ({ children }) =
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   // Extract primary segment for active nav state
   const pathSegment = location.pathname.split('/')[1] || 'dashboard';

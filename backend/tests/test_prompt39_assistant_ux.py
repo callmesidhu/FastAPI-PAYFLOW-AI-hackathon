@@ -14,7 +14,14 @@ from httpx import ASGITransport, AsyncClient
 from app.main import app
 from app.models.user import User
 from app.core.security import create_access_token, hash_password
+from app.services.ai_provider import MockAIProvider
 from tests.mock_db import MockDatabase
+
+
+@pytest.fixture(autouse=True)
+def use_mock_ai_provider(monkeypatch):
+    """Keep unit/UX assertions hermetic even when a live Gemini API key is in .env."""
+    monkeypatch.setattr("app.api.v1.ai.orchestrator.provider", MockAIProvider())
 
 
 @pytest.fixture

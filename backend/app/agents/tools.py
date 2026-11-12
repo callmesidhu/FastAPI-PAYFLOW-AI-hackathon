@@ -59,7 +59,7 @@ async def tool_search_customers(
             "name": c.name,
             "email": c.email,
             "company": c.company or "",
-            "active_invoices": c.active_invoice_count,
+            "active_invoices": c.invoice_count,
         }
         for c in result.items
     ]
@@ -400,3 +400,142 @@ ALLOWLISTED_TOOLS = {
     "get_receivables_summary": tool_get_receivables_summary,
     "request_approval": tool_request_approval,
 }
+
+
+TOOL_DECLARATIONS: List[Dict[str, Any]] = [
+    {
+        "name": "search_customers",
+        "description": "Search the authenticated merchant's customers by name, email, or company.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "query": {
+                    "type": "STRING",
+                    "description": "Customer search query, or 'all' to list customers.",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "create_invoice_draft",
+        "description": (
+            "Create a draft invoice in PAYFLOW AI (automatically resolves existing customers or registers new ones; "
+            "never sends or charges PayPal). ONLY call when customer name/ID AND line items with unit prices are provided."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "customer_name_or_id": {
+                    "type": "STRING",
+                    "description": "Customer name or ID to bill.",
+                },
+                "items": {
+                    "type": "ARRAY",
+                    "description": "Line items with service name and unit price.",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "name": {"type": "STRING", "description": "Line item title"},
+                            "description": {"type": "STRING", "description": "Optional notes"},
+                            "quantity": {"type": "NUMBER", "description": "Units (default 1)"},
+                            "unit_price": {"type": "NUMBER", "description": "Unit price"},
+                            "tax": {"type": "NUMBER", "description": "Tax amount (default 0)"},
+                        },
+                        "required": ["name", "unit_price"],
+                    },
+                },
+                "currency": {
+                    "type": "STRING",
+                    "description": "3-letter ISO currency code such as USD, EUR, GBP, CAD, AUD.",
+                },
+                "due_date": {
+                    "type": "STRING",
+                    "description": "Optional explicit due date in YYYY-MM-DD format.",
+                },
+                "due_in_days": {
+                    "type": "INTEGER",
+                    "description": "Days from issue date until due (defaults to 14).",
+                },
+                "notes": {"type": "STRING", "description": "Optional client memo or terms."},
+            },
+            "required": ["customer_name_or_id", "items"],
+        },
+    },
+    {
+        "name": "list_invoices",
+        "description": "List invoices for the user with optional status filter.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "status": {
+                    "type": "STRING",
+                    "description": "Optional filter: draft, pending_approval, created, sent, unpaid, paid, overdue.",
+                },
+                "customer_name": {"type": "STRING", "description": "Optional customer name filter."},
+                "limit": {"type": "INTEGER", "description": "Max records to return (1-50)."},
+            },
+        },
+    },
+    {
+        "name": "get_overdue_invoices",
+        "description": "List past-due unpaid/sent/overdue invoices for the user.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "currency": {"type": "STRING", "description": "Optional ISO currency filter."},
+            },
+        },
+    },
+    {
+        "name": "get_invoice_detail",
+        "description": "Get full line-item and PayPal metadata details for a specific invoice number or UUID.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "invoice_ref": {"type": "STRING", "description": "Invoice number (e.g. INV-2026-0001) or ID."},
+            },
+            "required": ["invoice_ref"],
+        },
+    },
+    {
+        "name": "prepare_reminder_draft",
+        "description": "Prepare an email/payment reminder preview draft for an invoice without sending it.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "invoice_ref": {"type": "STRING", "description": "Invoice number or internal ID."},
+                "tone": {
+                    "type": "STRING",
+                    "description": "Reminder tone: courteous, firm, or urgent.",
+                },
+            },
+            "required": ["invoice_ref"],
+        },
+    },
+    {
+        "name": "get_receivables_summary",
+        "description": "Get aggregate receivables KPIs: total outstanding, overdue, collected this month, and invoice count.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "currency": {"type": "STRING", "description": "Optional ISO currency code filter."},
+            },
+        },
+    },
+    {
+        "name": "request_approval",
+        "description": "Submit an existing draft invoice into the human Approval Center queue (never executes PayPal directly).",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "invoice_id": {"type": "STRING", "description": "Internal UUID of the draft invoice."},
+                "action_type": {
+                    "type": "STRING",
+                    "description": "Action type: create_paypal_invoice or send_payment_reminder.",
+                },
+            },
+            "required": ["invoice_id"],
+        },
+    },
+]

@@ -48,7 +48,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
         display: 'flex',
         minHeight: '100vh',
         width: '100%',
-        overflowX: 'hidden',
+        overflowX: 'clip',
         backgroundColor: 'var(--color-bg)',
       }}
     >
@@ -69,6 +69,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
           left: 0,
           bottom: 0,
           height: '100vh',
+          overflowY: 'auto',
           zIndex: 40,
         }}
         className="payflow-desktop-sidebar"

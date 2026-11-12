@@ -157,6 +157,28 @@ def build_paypal_invoice_payload(
     }
 
 
+def extract_paypal_invoice_id(data: Dict[str, Any]) -> Optional[str]:
+    """Extract PayPal invoice ID from full representation or HATEOAS 'self' link responses."""
+    raw_id = data.get("id")
+    if isinstance(raw_id, str) and raw_id.strip():
+        return raw_id.strip()
+
+    marker = "/v2/invoicing/invoices/"
+    candidates: List[str] = []
+    if data.get("rel") == "self" and isinstance(data.get("href"), str):
+        candidates.append(data["href"])
+    for link in data.get("links", []):
+        if isinstance(link, dict) and link.get("rel") == "self" and isinstance(link.get("href"), str):
+            candidates.append(link["href"])
+
+    for href in candidates:
+        if marker in href:
+            tail = href.split(marker, 1)[1].split("?", 1)[0].strip("/")
+            if tail and "/" not in tail:
+                return tail
+    return None
+
+
 def extract_paypal_invoice_url(data: Dict[str, Any], paypal_id: str) -> str:
     """Extract official invoice preview URL from PayPal response or construct official sandbox URL."""
     # Check HATEOAS links
@@ -370,6 +392,7 @@ class PayPalService:
         customer: Customer,
         user: User,
         idempotency_key: Optional[str] = None,
+        invoice_number_override: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create a draft invoice in PayPal Sandbox via Invoicing API v2.
 
@@ -383,11 +406,19 @@ class PayPalService:
         token = await self.get_access_token()
         url = f"{self.base_url}/v2/invoicing/invoices"
         payload = build_paypal_invoice_payload(invoice, customer, user)
+        if invoice_number_override:
+            payload["detail"]["invoice_number"] = invoice_number_override[:25]
+        # PayPal allows arbitrary invoicer.email_address on draft creation, then
+        # rejects /send with 422 USER_NOT_FOUND unless it belongs to the OAuth merchant.
+        # Omitting it at transport time lets PayPal bind the sandbox merchant account.
+        if isinstance(payload.get("invoicer"), dict):
+            payload["invoicer"].pop("email_address", None)
 
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "Prefer": "return=representation",
         }
         if idempotency_key:
             headers["PayPal-Request-Id"] = idempotency_key
@@ -405,9 +436,10 @@ class PayPalService:
 
             if response.status_code in (200, 201):
                 data = response.json()
+                resolved_id = extract_paypal_invoice_id(data)
                 logger.info(
                     "PayPal invoice created successfully (paypal_id=%s, invoice_number=%s)",
-                    data.get("id"),
+                    resolved_id,
                     invoice.invoice_number,
                 )
                 return data
@@ -426,25 +458,56 @@ class PayPalService:
             logger.error("Network error communicating with PayPal Sandbox: %s", str(err))
             raise PayPalAPIError("Network communication error with PayPal Sandbox.", status_code=502)
 
-    async def get_invoice(self, paypal_invoice_id: str) -> Dict[str, Any]:
-        """Retrieve an invoice by ID from PayPal Sandbox."""
+    async def search_invoice_by_number(self, invoice_number: str) -> List[Dict[str, Any]]:
+        """Query PayPal Sandbox Invoicing API v2 for existing invoices matching an invoice number."""
         token = await self.get_access_token()
-        url = f"{self.base_url}/v2/invoicing/invoices/{paypal_invoice_id}"
+        url = f"{self.base_url}/v2/invoicing/search-invoices"
         headers = {
             "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
             "Accept": "application/json",
         }
-
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
-                response = await client.get(url, headers=headers)
-
+                response = await client.post(url, headers=headers, json={"invoice_number": invoice_number})
             if response.status_code == 200:
-                return response.json()
-
-            raise parse_paypal_error(response)
+                return list(response.json().get("items") or [])
+            return []
         except (httpx.TimeoutException, httpx.RequestError) as err:
-            raise PayPalAPIError(f"Network error retrieving invoice {paypal_invoice_id}: {err}", status_code=502)
+            logger.warning("PayPal invoice search error for %s: %s", invoice_number, str(err))
+            return []
+
+    async def _clear_invoicer_email_from_draft(
+        self,
+        client: httpx.AsyncClient,
+        token: str,
+        paypal_invoice_id: str,
+    ) -> bool:
+        """Remove unassociated invoicer.email_address from an existing PayPal draft before retrying send."""
+        draft_url = f"{self.base_url}/v2/invoicing/invoices/{paypal_invoice_id}"
+        auth_headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+        get_resp = await client.get(draft_url, headers=auth_headers)
+        if get_resp.status_code != 200:
+            return False
+
+        draft = get_resp.json()
+        invoicer = draft.get("invoicer")
+        if not isinstance(invoicer, dict) or not invoicer.pop("email_address", None):
+            return False
+
+        put_resp = await client.put(
+            draft_url,
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json=draft,
+        )
+        if put_resp.status_code not in (200, 204):
+            logger.warning(
+                "Failed to strip invoicer.email_address on PayPal draft %s: HTTP %d",
+                paypal_invoice_id,
+                put_resp.status_code,
+            )
+            return False
+        return True
 
     async def send_invoice(
         self,
@@ -489,6 +552,19 @@ class PayPalService:
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 response = await client.post(url, headers=headers, json=body)
+
+                if (
+                    response.status_code == 422
+                    and (
+                        "USER_NOT_FOUND" in response.text
+                        or "invoicer email" in response.text.lower()
+                    )
+                    and await self._clear_invoicer_email_from_draft(client, token, paypal_invoice_id)
+                ):
+                    retry_headers = dict(headers)
+                    if idempotency_key:
+                        retry_headers["PayPal-Request-Id"] = f"{idempotency_key}-repaired"
+                    response = await client.post(url, headers=retry_headers, json=body)
 
             if response.status_code in (200, 202):
                 data = response.json() if response.content else {}
@@ -553,17 +629,20 @@ class PayPalService:
         """
         token = await self.get_access_token()
         url = f"{self.base_url}/v2/invoicing/invoices/{paypal_invoice_id}"
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.get(
-                url,
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
-            )
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.get(
+                    url,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Accept": "application/json",
+                    },
+                )
             if resp.status_code != 200:
                 raise parse_paypal_error(resp)
             return resp.json()
+        except (httpx.TimeoutException, httpx.RequestError) as err:
+            raise PayPalAPIError(f"Network error retrieving invoice {paypal_invoice_id}: {err}", status_code=502)
 
     async def verify_webhook_signature(
         self,
